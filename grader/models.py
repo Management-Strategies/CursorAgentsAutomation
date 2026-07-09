@@ -43,6 +43,8 @@ class AgentActivity:
     grade: str | None = None
     reason: str | None = None
     slot: int | None = None
+    thinking_buffer: str = ""
+    assistant_buffer: str = ""
 
     def append_line(self, line: str, max_lines: int = 30) -> None:
         if not line.strip():
@@ -50,6 +52,29 @@ class AgentActivity:
         self.lines.append(line.strip())
         if len(self.lines) > max_lines:
             self.lines = self.lines[-max_lines:]
+
+    def upsert_prefixed_line(self, prefix: str, content: str, max_lines: int = 30) -> None:
+        line = f"{prefix}{content}".strip()
+        if not line:
+            return
+        for i in range(len(self.lines) - 1, -1, -1):
+            if self.lines[i].startswith(prefix):
+                self.lines[i] = line
+                return
+        self.append_line(line, max_lines)
+
+    def replace_prefixed_line(self, old_prefix: str, new_line: str, max_lines: int = 30) -> None:
+        new_line = new_line.strip()
+        if not new_line:
+            return
+        for i in range(len(self.lines) - 1, -1, -1):
+            if self.lines[i].startswith(old_prefix):
+                self.lines[i] = new_line
+                return
+        self.append_line(new_line, max_lines)
+
+    def remove_prefixed_lines(self, prefix: str) -> None:
+        self.lines = [line for line in self.lines if not line.startswith(prefix)]
 
 
 @dataclass

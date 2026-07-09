@@ -20,46 +20,155 @@ from grader.prompt import build_prompt
 ActivityCallback = Callable[[AgentActivity], None]
 
 
-def format_activity_message(message: Any) -> str | None:
-    """Turn an SDK message into a short human-readable activity line."""
+class GradingCancelled(Exception):
+    """Raised when the user stops a run mid-stream."""
+
+
+def _format_tool_args(name: str, args: Any) -> str:
+    if not args:
+        return ""
+
+    if isinstance(args, str):
+        detail = args.strip()
+        return f": {detail[:120]}" if detail else ""
+
+    if isinstance(args, dict):
+        for key in ("url", "URL", "uri", "href", "path", "query", "search_term"):
+            value = args.get(key)
+            if value:
+                return f": {str(value)[:120]}"
+        if len(args) == 1:
+            return f": {str(next(iter(args.values())))[:120]}"
+        compact = ", ".join(f"{k}={v}" for k, v in list(args.items())[:3])
+        return f": {compact[:120]}"
+
+    return f": {str(args)[:120]}"
+
+
+def _truncate(text: str, limit: int = 220) -> str:
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return "..." + text[-(limit - 3) :]
+
+
+_NOISY_STATUSES = frozenset({"RUNNING", "PENDING", "IN_PROGRESS", "STARTED", "QUEUED"})
+
+
+def _finalize_assistant_line(activity: AgentActivity) -> None:
+    text = activity.assistant_buffer.strip()
+    if not text:
+        activity.remove_prefixed_lines("💬 Responding: ")
+        activity.assistant_buffer = ""
+        return
+    activity.replace_prefixed_line("💬 Responding: ", f"💬 {_truncate(text, 260)}")
+    activity.assistant_buffer = ""
+
+
+def apply_sdk_message_to_activity(activity: AgentActivity, message: Any) -> bool:
+    """Update activity log from an SDK stream message. Returns True if the UI should refresh."""
     msg_type = getattr(message, "type", None)
+
+    if msg_type == "thinking":
+        _finalize_assistant_line(activity)
+        text = getattr(message, "text", "") or ""
+        duration = getattr(message, "thinking_duration_ms", None)
+        if text:
+            activity.thinking_buffer += text
+            activity.upsert_prefixed_line("💭 Thinking: ", _truncate(activity.thinking_buffer, 220))
+            return True
+        if duration is not None:
+            thought = activity.thinking_buffer.strip()
+            if thought:
+                secs = duration / 1000
+                if secs >= 0.1:
+                    final = f"💭 Thought ({secs:.1f}s): {_truncate(thought, 200)}"
+                else:
+                    final = f"💭 Thought: {_truncate(thought, 200)}"
+                activity.replace_prefixed_line("💭 Thinking: ", final)
+            else:
+                activity.remove_prefixed_lines("💭 Thinking: ")
+            activity.thinking_buffer = ""
+            return True
+        return False
+
+    if msg_type == "tool_call":
+        _finalize_assistant_line(activity)
+        name = getattr(message, "name", "tool") or "tool"
+        status = getattr(message, "status", "") or ""
+        args = getattr(message, "args", None)
+        if status == "running":
+            activity.append_line(f"🔧 {name}{_format_tool_args(name, args)}")
+            return True
+        if status == "completed":
+            activity.append_line(f"✓ {name} completed")
+            return True
+        if status == "error":
+            activity.append_line(f"✗ {name} failed")
+            return True
+        activity.append_line(f"🔧 {name} ({status})")
+        return True
 
     if msg_type == "assistant":
         content = getattr(getattr(message, "message", None), "content", None) or []
-        parts: list[str] = []
+        changed = False
         for block in content:
             block_type = getattr(block, "type", None)
             if block_type == "text":
-                text = getattr(block, "text", "").strip()
+                text = getattr(block, "text", "")
                 if text:
-                    parts.append(text)
-            elif block_type == "tool_use":
-                name = getattr(block, "name", "tool")
-                parts.append(f"Using {name}...")
-            elif block_type == "tool_call":
-                name = getattr(block, "name", "tool")
-                parts.append(f"Calling {name}...")
-        if parts:
-            joined = " ".join(parts)
-            return joined[:300] + ("..." if len(joined) > 300 else "")
-        return None
+                    activity.assistant_buffer += text
+                    changed = True
+            elif block_type in {"tool_use", "tool_call"}:
+                _finalize_assistant_line(activity)
+                tool_name = getattr(block, "name", "tool")
+                activity.append_line(f"🔧 {tool_name}")
+                changed = True
+        if changed and activity.assistant_buffer.strip():
+            activity.upsert_prefixed_line(
+                "💬 Responding: ",
+                _truncate(activity.assistant_buffer.strip(), 260),
+            )
+            return True
+        return changed
 
-    if msg_type == "tool_result":
-        return "Received page content..."
+    if msg_type == "status":
+        status = (getattr(message, "status", "") or "").upper()
+        detail = (getattr(message, "message", "") or "").strip()
+        if detail:
+            activity.append_line(f"ℹ {detail[:200]}")
+            return True
+        if status and status not in _NOISY_STATUSES:
+            activity.append_line(f"ℹ Status: {status}")
+            return True
+        return False
 
-    if msg_type == "user":
-        return None
-
-    if msg_type == "system":
-        text = str(getattr(message, "message", "") or getattr(message, "content", ""))
+    if msg_type == "task":
+        text = getattr(message, "text", "")
+        status = getattr(message, "status", "")
         if text:
-            return text[:200]
-        return None
+            activity.append_line(f"📋 {text[:200]}")
+            return True
+        if status:
+            activity.append_line(f"📋 Task: {status}")
+            return True
+        return False
 
-    # Fallback for unknown envelope shapes
-    text = str(message)
-    if text and text != message.__class__.__name__:
-        return text[:200]
+    if msg_type in {"user", "system", "usage", "request"}:
+        return False
+
+    return False
+
+
+def format_activity_message(message: Any) -> str | None:
+    """Legacy helper — prefer apply_sdk_message_to_activity."""
+    msg_type = getattr(message, "type", None)
+    if msg_type == "thinking":
+        text = getattr(message, "text", "") or ""
+        return f"💭 {text}" if text else None
+    if msg_type == "tool_call":
+        name = getattr(message, "name", "tool")
+        return f"🔧 {name}"
     return None
 
 
@@ -121,6 +230,10 @@ async def grade_one_company(
                 activity.append_line(f"Decision: {grade} — {reason}")
                 emit(activity)
                 return task.row_index, grade, reason
+            except GradingCancelled:
+                activity.status = AgentStatus.STOPPED
+                emit(activity)
+                return task.row_index, "UNABLE", "Stopped by user"
             except asyncio.TimeoutError:
                 last_error = f"timed out after {config.per_row_timeout_seconds}s"
                 activity.append_line(last_error)
@@ -165,21 +278,25 @@ async def _grade_streaming(
 ) -> tuple[str, str]:
     async with await client.agents.create(options) as agent:
         run = await agent.send(prompt)
-        activity.append_line("Agent is browsing the website...")
-        emit(activity)
 
         async for message in run.messages():
             if cancel_check():
                 if run.supports("cancel"):
                     await run.cancel()
-                break
-            line = format_activity_message(message)
-            if line:
-                activity.append_line(line)
+                raise GradingCancelled()
+            if apply_sdk_message_to_activity(activity, message):
                 emit(activity)
+
+        if cancel_check():
+            raise GradingCancelled()
+
+        _finalize_assistant_line(activity)
+        emit(activity)
 
         result = await asyncio.wait_for(run.wait(), timeout=config.per_row_timeout_seconds)
 
+        if result.status == "cancelled":
+            raise GradingCancelled()
         if result.status != "finished":
             raise RuntimeError(f"run status={result.status}")
 
@@ -363,6 +480,8 @@ def _copy_activity(activity: AgentActivity) -> AgentActivity:
         grade=activity.grade,
         reason=activity.reason,
         slot=activity.slot,
+        thinking_buffer=activity.thinking_buffer,
+        assistant_buffer=activity.assistant_buffer,
     )
 
 

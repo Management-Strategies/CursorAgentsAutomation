@@ -46,6 +46,7 @@ def _init_session_state() -> None:
         "grading_config": GradingConfig.alliance_defaults(),
         "workers": 6,
         "use_examples": True,
+        "grade_limit": 5,
         "tasks": [],
         "batch_state": None,
         "event_queue": None,
@@ -54,6 +55,8 @@ def _init_session_state() -> None:
         "batch_error": None,
         "batch_done": False,
         "results_df": None,
+        "agent_focus_slot": 0,
+        "agent_focus_manual": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -114,6 +117,78 @@ def _reset_batch() -> None:
     ]:
         st.session_state[key] = None if key != "batch_done" else False
     st.session_state.batch_done = False
+    st.session_state.agent_focus_slot = 0
+    st.session_state.agent_focus_manual = False
+
+
+def _agent_status_icon(status: AgentStatus) -> str:
+    return {
+        AgentStatus.RUNNING: "🟢",
+        AgentStatus.QUEUED: "🟡",
+        AgentStatus.DONE: "✅",
+        AgentStatus.ERROR: "❌",
+        AgentStatus.STOPPED: "⏹",
+        AgentStatus.IDLE: "⚪",
+    }.get(status, "⚪")
+
+
+def _agent_summary(slot: AgentActivity | None, slot_index: int) -> str:
+    if slot is None:
+        return f"Agent {slot_index + 1} · Waiting"
+    icon = _agent_status_icon(slot.status)
+    grade = f" · {slot.grade}" if slot.grade else ""
+    return f"{icon} Agent {slot_index + 1} · {slot.label}{grade}"
+
+
+def _format_activity_log(lines: list[str]) -> str:
+    if not lines:
+        return "_No activity yet._"
+    parts: list[str] = []
+    for line in lines:
+        if line.startswith("💭 Thinking:"):
+            parts.append(f"> **Thinking…** {line.removeprefix('💭 Thinking:').strip()}")
+        elif line.startswith("💭 Thought"):
+            parts.append(f"> **Thought** {line.removeprefix('💭 Thought').strip()}")
+        elif line.startswith("🔧"):
+            parts.append(f"`{line}`")
+        elif line.startswith("✓") or line.startswith("✗"):
+            parts.append(f"**{line}**")
+        elif line.startswith("💬"):
+            parts.append(line)
+        else:
+            parts.append(line)
+    return "\n\n".join(parts)
+
+
+def _pick_auto_focus_slot(state: BatchState, workers: int) -> int:
+    for i in range(workers):
+        slot = state.slots[i] if i < len(state.slots) else None
+        if slot and slot.status == AgentStatus.RUNNING:
+            return i
+    for i in range(workers):
+        slot = state.slots[i] if i < len(state.slots) else None
+        if slot and slot.status not in {AgentStatus.IDLE, AgentStatus.QUEUED}:
+            return i
+    return 0
+
+
+def _render_agent_detail(slot: AgentActivity | None, slot_index: int, *, height: int = 420) -> None:
+    if slot is None:
+        st.caption("Waiting for work…")
+        return
+
+    header_cols = st.columns([3, 1])
+    with header_cols[0]:
+        st.markdown(f"**{slot.label}**")
+        st.caption(slot.website)
+    with header_cols[1]:
+        st.markdown(f"**{_status_badge(slot.status)}**")
+
+    if slot.grade:
+        st.markdown(f":{_grade_color(slot.grade)}[**{slot.grade}**] {slot.reason or ''}")
+
+    with st.container(height=height, border=True):
+        st.markdown(_format_activity_log(slot.lines))
 
 
 def _step_upload() -> None:
@@ -152,7 +227,7 @@ def _step_upload() -> None:
 
     if st.session_state.preview_df is not None:
         st.success(f"Loaded **{st.session_state.upload_name}** ({len(st.session_state.preview_df)} rows)")
-        st.dataframe(st.session_state.preview_df, use_container_width=True, height=400)
+        st.dataframe(st.session_state.preview_df, width="stretch", height=400)
 
         if st.button("Continue to configuration", type="primary"):
             st.session_state.step = 1
@@ -188,6 +263,12 @@ def _step_configure() -> None:
         st.subheader("Run settings")
         workers = st.slider("Concurrent agents", min_value=1, max_value=8, value=st.session_state.workers)
         use_examples = st.checkbox("Use already-graded rows as examples", value=st.session_state.use_examples)
+        grade_limit = st.number_input(
+            "Companies to grade (test run)",
+            min_value=0,
+            value=st.session_state.grade_limit,
+            help="How many pending companies to grade this run. Default is 5 for a quick test. Set to 0 to grade all pending rows.",
+        )
 
     with col_right:
         st.subheader("Grading criteria")
@@ -226,10 +307,14 @@ def _step_configure() -> None:
             )
             st.session_state.workers = workers
             st.session_state.use_examples = use_examples
+            st.session_state.grade_limit = int(grade_limit)
             _reset_batch()
             ws = st.session_state.ws
             mapping = st.session_state.mapping
-            st.session_state.tasks = build_pending_tasks(ws, mapping)
+            tasks = build_pending_tasks(ws, mapping)
+            if st.session_state.grade_limit > 0:
+                tasks = tasks[: st.session_state.grade_limit]
+            st.session_state.tasks = tasks
             st.session_state.step = 2
             st.rerun()
 
@@ -254,24 +339,6 @@ def _grade_color(grade: str | None) -> str:
     if grade == "UNABLE":
         return "red"
     return "gray"
-
-
-def _render_agent_card(slot: AgentActivity | None, slot_index: int) -> None:
-    with st.container(border=True):
-        if slot is None:
-            st.markdown(f"**Agent {slot_index + 1}**")
-            st.caption("Waiting for work...")
-            return
-
-        st.markdown(f"**Agent {slot_index + 1}** · {_status_badge(slot.status)}")
-        st.markdown(f"**{slot.label}**")
-        st.caption(slot.website)
-
-        if slot.grade:
-            st.markdown(f":{_grade_color(slot.grade)}[**{slot.grade}**] {slot.reason or ''}")
-
-        log_text = "\n".join(slot.lines) if slot.lines else "—"
-        st.code(log_text, language=None)
 
 
 def _drain_events() -> None:
@@ -306,21 +373,53 @@ def _live_monitor() -> None:
     if state is None:
         return
 
+    workers = st.session_state.workers
     completed = state.completed
     total = state.total
     st.progress(completed / total if total else 0.0, text=f"{completed} / {total} complete")
 
-    cols_per_row = 4
-    num_rows = (st.session_state.workers + cols_per_row - 1) // cols_per_row
-    for row_idx in range(num_rows):
-        cols = st.columns(cols_per_row)
-        for col_idx, col in enumerate(cols):
-            slot_index = row_idx * cols_per_row + col_idx
-            if slot_index >= st.session_state.workers:
-                break
-            with col:
-                slot = state.slots[slot_index] if slot_index < len(state.slots) else None
-                _render_agent_card(slot, slot_index)
+    if not st.session_state.agent_focus_manual:
+        st.session_state.agent_focus_slot = _pick_auto_focus_slot(state, workers)
+
+    focus_options = list(range(workers))
+    selected = st.selectbox(
+        "Focus agent",
+        focus_options,
+        format_func=lambda i: _agent_summary(
+            state.slots[i] if i < len(state.slots) else None,
+            i,
+        ),
+        index=st.session_state.agent_focus_slot,
+        key="agent_focus_select",
+    )
+    if selected != st.session_state.agent_focus_slot:
+        st.session_state.agent_focus_slot = selected
+        st.session_state.agent_focus_manual = True
+
+    focus = st.session_state.agent_focus_slot
+    focused_slot = state.slots[focus] if focus < len(state.slots) else None
+
+    st.subheader("Agent activity")
+    _render_agent_detail(focused_slot, focus, height=420)
+
+    st.markdown("**All agents**")
+    for slot_index in range(workers):
+        slot = state.slots[slot_index] if slot_index < len(state.slots) else None
+        is_focused = slot_index == focus
+        latest = slot.lines[-1] if slot and slot.lines else "No activity yet"
+        title = _agent_summary(slot, slot_index)
+        with st.expander(title, expanded=is_focused):
+            if is_focused:
+                st.caption("This agent is expanded above for a full readable view.")
+            elif slot is None:
+                st.caption("Waiting for work…")
+            else:
+                st.caption(slot.website)
+                if slot.grade:
+                    st.markdown(f":{_grade_color(slot.grade)}[**{slot.grade}**] {slot.reason or ''}")
+                st.markdown(_format_activity_log(slot.lines[-6:] if slot.lines else []))
+                if not is_focused:
+                    st.caption(f"Latest: {latest}")
 
     if st.session_state.batch_done:
         if st.session_state.batch_error:
@@ -389,7 +488,15 @@ def _start_batch() -> None:
 def _step_run() -> None:
     st.header("3. Grade websites")
     tasks = st.session_state.tasks
-    st.markdown(f"**{len(tasks)}** companies to grade with **{st.session_state.workers}** concurrent agents.")
+    limit_note = (
+        f" (test run: first {st.session_state.grade_limit})"
+        if st.session_state.grade_limit > 0
+        else ""
+    )
+    st.markdown(
+        f"**{len(tasks)}** companies to grade{limit_note} with "
+        f"**{st.session_state.workers}** concurrent agents."
+    )
 
     if not _require_api_key():
         return
