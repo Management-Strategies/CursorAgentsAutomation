@@ -46,6 +46,7 @@ def _init_session_state() -> None:
         "grading_config": GradingConfig.alliance_defaults(),
         "workers": 6,
         "use_examples": True,
+        "test_run_enabled": False,
         "grade_limit": 5,
         "tasks": [],
         "batch_state": None,
@@ -263,11 +264,16 @@ def _step_configure() -> None:
         st.subheader("Run settings")
         workers = st.slider("Concurrent agents", min_value=1, max_value=8, value=st.session_state.workers)
         use_examples = st.checkbox("Use already-graded rows as examples", value=st.session_state.use_examples)
+        test_run_enabled = st.checkbox(
+            "Test run (grade only a few companies)",
+            value=st.session_state.test_run_enabled,
+            help="Leave unchecked to grade all pending rows. Check to limit how many companies are graded this run.",
+        )
         grade_limit = st.number_input(
-            "Companies to grade (test run)",
-            min_value=0,
+            "Companies to grade in test run",
+            min_value=1,
             value=st.session_state.grade_limit,
-            help="How many pending companies to grade this run. Default is 5 for a quick test. Set to 0 to grade all pending rows.",
+            disabled=not test_run_enabled,
         )
 
     with col_right:
@@ -307,12 +313,13 @@ def _step_configure() -> None:
             )
             st.session_state.workers = workers
             st.session_state.use_examples = use_examples
-            st.session_state.grade_limit = int(grade_limit)
+            st.session_state.test_run_enabled = test_run_enabled
+            st.session_state.grade_limit = int(grade_limit) if test_run_enabled else 0
             _reset_batch()
             ws = st.session_state.ws
             mapping = st.session_state.mapping
             tasks = build_pending_tasks(ws, mapping)
-            if st.session_state.grade_limit > 0:
+            if test_run_enabled:
                 tasks = tasks[: st.session_state.grade_limit]
             st.session_state.tasks = tasks
             st.session_state.step = 2
@@ -490,7 +497,7 @@ def _step_run() -> None:
     tasks = st.session_state.tasks
     limit_note = (
         f" (test run: first {st.session_state.grade_limit})"
-        if st.session_state.grade_limit > 0
+        if st.session_state.test_run_enabled
         else ""
     )
     st.markdown(
