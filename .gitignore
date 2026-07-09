@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local secrets (real one; keep .streamlit/secrets.toml.example checked in)
+.streamlit/secrets.toml
+
