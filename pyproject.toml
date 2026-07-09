@@ -1,10 +1,11 @@
 [project]
 name = "cursor-automation"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Lead website grader — CLI and Streamlit web app"
 requires-python = ">=3.13"
 dependencies = [
-    "cursor>=1.3.5",
+    "cursor-sdk>=0.1.8",
     "openpyxl>=3.1.5",
+    "streamlit>=1.33",
+    "pandas>=2.0",
 ]
