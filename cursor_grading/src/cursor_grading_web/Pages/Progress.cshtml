@@ -1,0 +1,61 @@
+@page
+@model cursor_grading_web.Pages.progress_model
+@{
+    ViewData["Title"] = "Grading Progress";
+}
+
+<div class="container">
+    <h1 class="mb-4">Grading Progress</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">Status</div>
+        <div class="card-body">
+            <div id="status_badge" class="badge bg-secondary mb-2">Waiting for updates...</div>
+
+            <div class="progress mb-3" style="height: 30px;">
+                <div id="progress_bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    0 / 0
+                </div>
+            </div>
+
+            <div id="complete_message" class="d-none">
+                <div class="alert alert-success">
+                    Grading complete!
+                    <a id="download_link" href="#" class="btn btn-success ms-3">Download Results</a>
+                </div>
+            </div>
+
+            <div id="error_message" class="alert alert-danger d-none"></div>
+
+            <div class="mt-2">
+                <button id="cancel_btn" class="btn btn-warning btn-sm">Cancel Job</button>
+                <a href="/" class="btn btn-outline-secondary btn-sm">Back to Upload</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Results Log</div>
+        <div class="card-body p-0">
+            <div id="log_container" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-striped table-sm mb-0" id="log_table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Grade</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log_body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/grading.js"></script>
+}

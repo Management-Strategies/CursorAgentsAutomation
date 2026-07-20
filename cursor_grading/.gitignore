@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## VS Code / Cursor
+.vscode/
+.idea/
+
+## Uploads (runtime data)
+wwwroot/uploads/
+
+## User secrets
+appsettings.*.local.json
+secrets.json

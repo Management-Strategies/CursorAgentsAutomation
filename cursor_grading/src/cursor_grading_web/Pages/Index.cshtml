@@ -1,0 +1,48 @@
+﻿@page
+@model cursor_grading_web.Pages.index_model
+@{
+    ViewData["Title"] = "Company Website Grading";
+}
+
+<div class="container">
+    <h1 class="mb-4">Company Website Grading</h1>
+    <p class="lead">Upload an Excel spreadsheet of companies to grade their websites as potential B2B leads.</p>
+
+    <div class="card mb-4">
+        <div class="card-header">Start New Grading Job</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="input_file" class="form-label">Input Excel File (.xlsx)</label>
+                    <input type="file" class="form-control" id="input_file" name="input_file" accept=".xlsx" required>
+                    <div class="form-text">Must contain columns: Website Link, Company primary products, about Company who they are selling, WEBSITE_GRADE</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="output_name" class="form-label">Output Filename</label>
+                    <input type="text" class="form-control" id="output_name" name="output_name" value="companies_graded.xlsx">
+                    <div class="form-text">The graded file will be saved in the uploads folder with this name</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="sheet_name" class="form-label">Sheet Name (optional)</label>
+                    <input type="text" class="form-control" id="sheet_name" name="sheet_name" placeholder="Leave blank for active sheet">
+                </div>
+
+                <div class="mb-3">
+                    <label for="max_workers" class="form-label">Max Workers (concurrent gradings)</label>
+                    <input type="number" class="form-control" id="max_workers" name="max_workers" value="6" min="1" max="20">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Start Grading</button>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.message != null)
+    {
+        <div class="alert @(Model.is_error ? "alert-danger" : "alert-info")">
+            @Model.message
+        </div>
+    }
+</div>
