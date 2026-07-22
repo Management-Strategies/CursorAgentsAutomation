@@ -9,6 +9,7 @@
     var logFilter = "all";
     // null = arrival (newest first), "asc", "desc"
     var reasonSort = null;
+    var detailModal = null;
 
     function formatUsd(amount) {
         var n = Number(amount);
@@ -24,6 +25,18 @@
             .replace(/"/g, "&quot;");
     }
 
+    function displayOrDash(value) {
+        var s = String(value == null ? "" : value).trim();
+        return s ? s : "—";
+    }
+
+    function normalizeWebsiteHref(url) {
+        var s = String(url == null ? "" : url).trim();
+        if (!s) return "";
+        if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+        return s;
+    }
+
     function getGradeBadgeClass(grade) {
         switch (grade) {
             case "GOOD": return "bg-success";
@@ -31,6 +44,144 @@
             case "UNABLE": return "bg-danger";
             default: return "bg-secondary";
         }
+    }
+
+    function isFailureEntry(entry) {
+        return entry && entry.grade === "UNABLE";
+    }
+
+    function explainFailure(entry) {
+        var reason = entry.reason || "";
+        var lower = reason.toLowerCase();
+
+        if (/scrape failed/i.test(reason) && /429|too many requests/i.test(reason)) {
+            return {
+                summary: "Website rate-limited the scrape",
+                explanation:
+                    "The target site (or a WAF/CDN in front of it) returned HTTP 429. " +
+                    "That means too many requests were received from this IP in a short time, " +
+                    "so the page content was never retrieved and the LLM could not grade it.",
+                suggestions: [
+                    "Lower Max Workers so fewer sites are scraped at once.",
+                    "Re-run later for this row; many 429s are temporary.",
+                    "If many rows fail this way, add scrape retries with backoff."
+                ]
+            };
+        }
+
+        if (/scrape failed/i.test(reason) && /403|forbidden/i.test(reason)) {
+            return {
+                summary: "Website blocked the scrape",
+                explanation:
+                    "The site returned HTTP 403 Forbidden. It refused to serve the page to this scraper " +
+                    "(bot protection, geo rules, or login-only content).",
+                suggestions: [
+                    "Open the website manually to confirm it loads in a browser.",
+                    "Some sites cannot be scraped reliably; leave as UNABLE or grade manually."
+                ]
+            };
+        }
+
+        if (/ssl|tls|certificate/i.test(lower)) {
+            return {
+                summary: "HTTPS / SSL connection failed",
+                explanation:
+                    "The scraper could not complete a secure connection to the website. " +
+                    "No HTTP page was returned. Common causes: expired or mismatched certificate, " +
+                    "TLS version mismatch, broken HTTPS setup, or a proxy/WAF interrupting the handshake.",
+                suggestions: [
+                    "Open the URL in a browser and check for certificate warnings.",
+                    "Verify the spreadsheet URL (www vs non-www, http vs https).",
+                    "If the site’s certificate is broken, UNABLE is expected until the site is fixed."
+                ]
+            };
+        }
+
+        if (/timed out|timeout/i.test(lower)) {
+            return {
+                summary: "Request timed out",
+                explanation:
+                    "The scrape did not finish within the allowed time. The site may be slow, unreachable, " +
+                    "or hanging during the connection.",
+                suggestions: [
+                    "Try the URL in a browser to see if it loads slowly.",
+                    "Re-run this row later; timeouts are often transient."
+                ]
+            };
+        }
+
+        if (/scrape failed/i.test(reason) && /network error/i.test(reason)) {
+            return {
+                summary: "Network error while scraping",
+                explanation:
+                    "The HTTP client failed before getting a usable page response. " +
+                    "This can be DNS failure, connection reset, TLS problems, or the host being unreachable.",
+                suggestions: [
+                    "Check that the website URL in the spreadsheet is correct.",
+                    "Confirm the host resolves and loads outside this tool."
+                ]
+            };
+        }
+
+        if (/scrape failed/i.test(reason)) {
+            return {
+                summary: "Website scrape failed",
+                explanation:
+                    "The tool could not extract usable page text from this company’s website, " +
+                    "so it marked the row UNABLE instead of guessing from the URL alone.",
+                suggestions: [
+                    "Read the technical reason below for the exact HTTP/network detail.",
+                    "Open the site manually; if it works only after JS challenges, scraping may not be possible."
+                ]
+            };
+        }
+
+        if (/429|rate limit/i.test(lower) && /(deepseek|gemini|http 429)/i.test(lower)) {
+            return {
+                summary: "LLM provider rate-limited the request",
+                explanation:
+                    "The AI provider rejected the grading call with HTTP 429 (too many concurrent or too-fast requests). " +
+                    "The website may have scraped successfully, but the model call failed.",
+                suggestions: [
+                    "Lower Max Workers.",
+                    "Increase ramp interval so requests start more gradually.",
+                    "Re-run failed rows after a short wait."
+                ]
+            };
+        }
+
+        if (/failed after/i.test(lower) || /httprequestexception/i.test(lower)) {
+            return {
+                summary: "LLM grading call failed",
+                explanation:
+                    "After scraping (if that succeeded), calling the LLM failed one or more times. " +
+                    "See the technical reason for the provider status and message.",
+                suggestions: [
+                    "Check API key, model name, and account balance/quota.",
+                    "Retry with fewer workers if the error looks like rate limiting."
+                ]
+            };
+        }
+
+        if (entry.grade === "UNABLE") {
+            return {
+                summary: "Marked UNABLE",
+                explanation:
+                    "The grader could not classify this company as GOOD or MAYBE. " +
+                    "That may be intentional model judgment (weak fit / unclear site) " +
+                    "or a technical failure described in the reason.",
+                suggestions: [
+                    "Read the technical reason and company fields below.",
+                    "Open the website to decide if a manual override is needed."
+                ]
+            };
+        }
+
+        return {
+            summary: "Grading result",
+            explanation: "This row completed with the grade shown above.",
+            suggestions: []
+        };
     }
 
     function updateSpend(jobCost) {
@@ -144,6 +295,88 @@
         return rows;
     }
 
+    function findEntryBySeq(seq) {
+        for (var i = 0; i < logEntries.length; i++) {
+            if (logEntries[i].seq === seq) return logEntries[i];
+        }
+        return null;
+    }
+
+    function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    function showResultDetail(entry) {
+        if (!entry) return;
+
+        var explained = explainFailure(entry);
+        var badge = document.getElementById("detail_grade_badge");
+        if (badge) {
+            badge.className = "badge " + getGradeBadgeClass(entry.grade);
+            badge.textContent = entry.grade || "—";
+        }
+
+        setText("detail_excel_row", entry.excelRow > 0 ? String(entry.excelRow) : "—");
+        setText("detail_seq", String(entry.seq));
+        setText("detail_cost", formatUsd(entry.cost));
+        setText("detail_summary", explained.summary);
+        setText("detail_explanation", explained.explanation);
+        setText("detail_reason", entry.reason || "—");
+        setText("detail_company", displayOrDash(entry.company));
+        setText("detail_contact", displayOrDash(entry.contact));
+        setText("detail_email", displayOrDash(entry.email));
+        setText("detail_phone", displayOrDash(entry.phone));
+        setText("detail_products", displayOrDash(entry.products));
+        setText("detail_about", displayOrDash(entry.about));
+
+        var websiteEl = document.getElementById("detail_website");
+        var openBtn = document.getElementById("detail_open_website");
+        var href = normalizeWebsiteHref(entry.website);
+        if (websiteEl) {
+            if (href) {
+                websiteEl.innerHTML =
+                    '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer">' +
+                    escapeHtml(entry.website) + "</a>";
+            } else {
+                websiteEl.textContent = "—";
+            }
+        }
+        if (openBtn) {
+            if (href) {
+                openBtn.href = href;
+                openBtn.classList.remove("d-none");
+            } else {
+                openBtn.classList.add("d-none");
+            }
+        }
+
+        var suggestionsWrap = document.getElementById("detail_suggestions_wrap");
+        var suggestionsList = document.getElementById("detail_suggestions");
+        if (suggestionsWrap && suggestionsList) {
+            suggestionsList.innerHTML = "";
+            if (explained.suggestions && explained.suggestions.length) {
+                for (var i = 0; i < explained.suggestions.length; i++) {
+                    var li = document.createElement("li");
+                    li.textContent = explained.suggestions[i];
+                    suggestionsList.appendChild(li);
+                }
+                suggestionsWrap.classList.remove("d-none");
+            } else {
+                suggestionsWrap.classList.add("d-none");
+            }
+        }
+
+        var title = document.getElementById("result_detail_title");
+        if (title) {
+            title.textContent = isFailureEntry(entry)
+                ? "Failure details"
+                : "Result details";
+        }
+
+        if (detailModal) detailModal.show();
+    }
+
     function renderLog() {
         var tbody = document.getElementById("log_body");
         if (!tbody) return;
@@ -155,12 +388,19 @@
         var html = "";
         for (var i = 0; i < visible.length; i++) {
             var e = visible[i];
+            var clickable = isFailureEntry(e);
+            var rowClass = clickable ? ' class="log-row-clickable"' : "";
+            var attrs = clickable
+                ? ' role="button" tabindex="0" data-seq="' + e.seq + '" title="Click for failure details"'
+                : "";
             html +=
-                "<tr>" +
+                "<tr" + rowClass + attrs + ">" +
                 "<td>" + e.seq + "</td>" +
                 '<td><span class="badge ' + getGradeBadgeClass(e.grade) + '">' + escapeHtml(e.grade) + "</span></td>" +
                 "<td>" + formatUsd(e.cost) + "</td>" +
-                "<td>" + escapeHtml(e.reason) + "</td>" +
+                "<td>" + escapeHtml(e.reason) +
+                (clickable ? ' <span class="text-muted small">Details</span>' : "") +
+                "</td>" +
                 "</tr>";
         }
         tbody.innerHTML = html;
@@ -169,12 +409,21 @@
         if (container && reasonSort === null) container.scrollTop = 0;
     }
 
-    function appendLog(grade, reason, rowCost) {
+    function appendLog(grade, reason, rowCost, meta) {
+        meta = meta || {};
         logEntries.push({
             seq: logEntries.length + 1,
             grade: grade || "",
             reason: reason || "",
-            cost: rowCost
+            cost: rowCost,
+            excelRow: Number(meta.excelRow) || 0,
+            company: meta.company || "",
+            website: meta.website || "",
+            products: meta.products || "",
+            about: meta.about || "",
+            contact: meta.contact || "",
+            email: meta.email || "",
+            phone: meta.phone || ""
         });
         renderLog();
     }
@@ -193,7 +442,38 @@
         renderLog();
     }
 
-    function updateProgress(completed, total, grade, reason, rowCost, jobCost, scrapeFails) {
+    function updateProgress(payload) {
+        // Support both object payload (current) and legacy positional args if ever replayed.
+        var completed, total, grade, reason, rowCost, jobCost, scrapeFails, meta;
+        if (payload && typeof payload === "object" && !Array.isArray(payload) && "completed" in payload) {
+            completed = payload.completed;
+            total = payload.total;
+            grade = payload.grade;
+            reason = payload.reason;
+            rowCost = payload.row_cost;
+            jobCost = payload.job_cost;
+            scrapeFails = payload.scrape_fails;
+            meta = {
+                excelRow: payload.excel_row,
+                company: payload.company,
+                website: payload.website,
+                products: payload.products,
+                about: payload.about,
+                contact: payload.contact,
+                email: payload.email,
+                phone: payload.phone
+            };
+        } else {
+            completed = arguments[0];
+            total = arguments[1];
+            grade = arguments[2];
+            reason = arguments[3];
+            rowCost = arguments[4];
+            jobCost = arguments[5];
+            scrapeFails = arguments[6];
+            meta = {};
+        }
+
         var bar = document.getElementById("progress_bar");
         var badge = document.getElementById("status_badge");
 
@@ -211,7 +491,7 @@
 
         updateSpend(jobCost);
         updateScrapeFails(scrapeFails);
-        appendLog(grade, reason, rowCost);
+        appendLog(grade, reason, rowCost, meta);
         if (window.deepseekBalance && document.querySelector("[data-deepseek-balance]"))
             window.deepseekBalance.refresh(false);
     }
@@ -341,6 +621,11 @@
         updateReasonSortIndicator();
         updateShowingCount(0, 0);
 
+        var modalEl = document.getElementById("result_detail_modal");
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+            detailModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        }
+
         var cancelBtn = document.getElementById("cancel_btn");
         if (cancelBtn) {
             cancelBtn.addEventListener("click", cancelJob);
@@ -366,6 +651,24 @@
                     e.preventDefault();
                     cycleReasonSort();
                 }
+            });
+        }
+
+        var tbody = document.getElementById("log_body");
+        if (tbody) {
+            tbody.addEventListener("click", function (e) {
+                var tr = e.target.closest("tr.log-row-clickable");
+                if (!tr) return;
+                var seq = Number(tr.getAttribute("data-seq"));
+                showResultDetail(findEntryBySeq(seq));
+            });
+            tbody.addEventListener("keydown", function (e) {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                var tr = e.target.closest("tr.log-row-clickable");
+                if (!tr) return;
+                e.preventDefault();
+                var seq = Number(tr.getAttribute("data-seq"));
+                showResultDetail(findEntryBySeq(seq));
             });
         }
     });

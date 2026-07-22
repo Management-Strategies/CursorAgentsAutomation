@@ -70,7 +70,7 @@
 
     <div class="card">
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <span>Results Log</span>
+            <span>Results Log <span class="small text-muted fw-normal">(click a failure row for details)</span></span>
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <span id="log_showing_count" class="small text-muted">Showing 0 of 0</span>
                 <button type="button" id="filter_all_btn" class="btn btn-secondary btn-sm">
@@ -109,8 +109,63 @@
     </div>
 </div>
 
+<!-- Failure / result detail dialog -->
+<div class="modal fade" id="result_detail_modal" tabindex="-1" aria-labelledby="result_detail_title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="result_detail_title">Result details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span id="detail_grade_badge" class="badge bg-secondary">—</span>
+                    <span class="text-muted ms-2 small">Excel row <span id="detail_excel_row">—</span>
+                        · log #<span id="detail_seq">—</span>
+                        · cost <span id="detail_cost">—</span></span>
+                </div>
+
+                <h6 class="text-uppercase text-muted small mb-1">What happened</h6>
+                <p id="detail_summary" class="fw-semibold mb-2"></p>
+                <p id="detail_explanation" class="mb-3"></p>
+
+                <h6 class="text-uppercase text-muted small mb-1">Technical reason</h6>
+                <pre id="detail_reason" class="bg-light border rounded p-2 small mb-3" style="white-space: pre-wrap;"></pre>
+
+                <div id="detail_suggestions_wrap" class="mb-4 d-none">
+                    <h6 class="text-uppercase text-muted small mb-1">What you can try</h6>
+                    <ul id="detail_suggestions" class="mb-0"></ul>
+                </div>
+
+                <h6 class="text-uppercase text-muted small mb-2">Company / contact</h6>
+                <dl class="row mb-0" id="detail_company_fields">
+                    <dt class="col-sm-3">Company</dt>
+                    <dd class="col-sm-9" id="detail_company">—</dd>
+                    <dt class="col-sm-3">Website</dt>
+                    <dd class="col-sm-9" id="detail_website">—</dd>
+                    <dt class="col-sm-3">Contact</dt>
+                    <dd class="col-sm-9" id="detail_contact">—</dd>
+                    <dt class="col-sm-3">Email</dt>
+                    <dd class="col-sm-9" id="detail_email">—</dd>
+                    <dt class="col-sm-3">Phone</dt>
+                    <dd class="col-sm-9" id="detail_phone">—</dd>
+                    <dt class="col-sm-3">Products</dt>
+                    <dd class="col-sm-9" id="detail_products">—</dd>
+                    <dt class="col-sm-3">About / selling</dt>
+                    <dd class="col-sm-9" id="detail_about">—</dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <a id="detail_open_website" href="#" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-outline-primary d-none">Open website</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/deepseek_balance.js?v=provider1"></script>
-    <script src="~/js/grading.js?v=shutdown1"></script>
+    <script src="~/js/grading.js?v=detail1"></script>
 }

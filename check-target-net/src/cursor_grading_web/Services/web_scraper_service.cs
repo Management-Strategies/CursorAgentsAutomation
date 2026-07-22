@@ -84,7 +84,10 @@ public class web_scraper_service
         }
         catch (HttpRequestException ex)
         {
-            return new scrape_result(false, "", $"Network error: {ex.Message}");
+            var detail = ex.Message;
+            if (ex.InnerException != null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
+                detail = $"{ex.Message} ({ex.InnerException.Message})";
+            return new scrape_result(false, "", $"Network error: {detail}");
         }
         catch (Exception ex)
         {

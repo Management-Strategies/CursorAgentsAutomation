@@ -169,12 +169,25 @@ public class grading_background_service : BackgroundService
             var job_cost = job_micros / 1_000_000m;
 
             // Progress after the grade is recorded in the workbook (do not cancel mid-notify after write)
-            await _hub_context.Clients.All.SendAsync("grading_progress",
-                done, total,
-                result.grade, result.reason,
-                (double)row_cost, (double)job_cost,
-                scrape_fails,
-                cancellationToken: CancellationToken.None);
+            await _hub_context.Clients.All.SendAsync(
+                "grading_progress",
+                new grading_progress_event(
+                    done,
+                    total,
+                    result.grade,
+                    result.reason,
+                    (double)row_cost,
+                    (double)job_cost,
+                    scrape_fails,
+                    result.row_index,
+                    row.company,
+                    row.website,
+                    row.products,
+                    row.about,
+                    row.contact,
+                    row.email,
+                    row.phone),
+                CancellationToken.None);
 
             _logger.LogInformation(
                 "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6}, scrape_fails {ScrapeFails})",
@@ -288,6 +301,24 @@ public record grading_job_request(
     string? sheet_name,
     int max_workers = 6,
     string llm_provider = "deepseek"
+);
+
+public record grading_progress_event(
+    int completed,
+    int total,
+    string grade,
+    string reason,
+    double row_cost,
+    double job_cost,
+    int scrape_fails,
+    int excel_row,
+    string company,
+    string website,
+    string products,
+    string about,
+    string contact,
+    string email,
+    string phone
 );
 
 public class grading_job_status

@@ -29,7 +29,10 @@ public class excel_service
                 header_map[val] = cell.WorksheetColumn().ColumnNumber();
         }
 
-        int col_company = header_map.TryGetValue("Company Name", out var cc) ? cc : -1;
+        int col_company = first_header(header_map, "Company Name", "Company");
+        int col_contact = first_header(header_map, "Contact Name", "Contact", "Contact Person", "Full Name");
+        int col_email = first_header(header_map, "Email", "Contact Email", "E-mail");
+        int col_phone = first_header(header_map, "Phone", "Contact Phone", "Telephone", "Mobile");
         int col_website = header_map.GetValueOrDefault(columns.website, -1);
         int col_products = header_map.GetValueOrDefault(columns.products, -1);
         int col_about = header_map.GetValueOrDefault(columns.about, -1);
@@ -77,11 +80,24 @@ public class excel_service
                 col_company > 0 ? GetCellValue(row, col_company) : "",
                 website,
                 GetCellValue(row, col_products),
-                GetCellValue(row, col_about)
+                GetCellValue(row, col_about),
+                col_contact > 0 ? GetCellValue(row, col_contact) : "",
+                col_email > 0 ? GetCellValue(row, col_email) : "",
+                col_phone > 0 ? GetCellValue(row, col_phone) : ""
             ));
         }
 
         return (pending, examples);
+    }
+
+    private static int first_header(Dictionary<string, int> header_map, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (header_map.TryGetValue(name, out var col))
+                return col;
+        }
+        return -1;
     }
 
     /// <summary>
