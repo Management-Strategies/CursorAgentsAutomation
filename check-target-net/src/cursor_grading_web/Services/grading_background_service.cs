@@ -126,6 +126,7 @@ public class grading_background_service : BackgroundService
         var total = pending.Count;
         // Micro-dollars (1e-6 USD) for thread-safe Interlocked accumulation
         long total_cost_micros = 0;
+        var job_sw = System.Diagnostics.Stopwatch.StartNew();
 
         // serialize workbook writes (ClosedXML is not thread-safe)
         var file_lock = new object();
@@ -142,6 +143,7 @@ public class grading_background_service : BackgroundService
         var tasks = pending.Select(async row =>
         {
             await semaphore.WaitAsync(ct);
+            var row_sw = System.Diagnostics.Stopwatch.StartNew();
             grade_result result;
             try
             {
@@ -157,6 +159,7 @@ public class grading_background_service : BackgroundService
             {
                 writer.write_grade(result);
             }
+            row_sw.Stop();
 
             var done = Interlocked.Increment(ref completed_count);
             var scrape_fails = result.reason.StartsWith("Scrape failed:", StringComparison.Ordinal)
@@ -167,6 +170,8 @@ public class grading_background_service : BackgroundService
             var job_micros = Interlocked.Add(ref total_cost_micros, row_micros);
             var row_cost = result.cost_usd;
             var job_cost = job_micros / 1_000_000m;
+            var row_elapsed_sec = row_sw.Elapsed.TotalSeconds;
+            var job_elapsed_sec = job_sw.Elapsed.TotalSeconds;
 
             // Progress after the grade is recorded in the workbook (do not cancel mid-notify after write)
             await _hub_context.Clients.All.SendAsync(
@@ -186,13 +191,15 @@ public class grading_background_service : BackgroundService
                     row.about,
                     row.contact,
                     row.email,
-                    row.phone),
+                    row.phone,
+                    row_elapsed_sec,
+                    job_elapsed_sec),
                 CancellationToken.None);
 
             _logger.LogInformation(
-                "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6}, scrape_fails {ScrapeFails})",
+                "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6}, scrape_fails {ScrapeFails}, row {RowElapsed:F1}s, job {JobElapsed:F1}s)",
                 done, total, result.row_index, result.grade, result.reason,
-                row_cost, job_cost, scrape_fails);
+                row_cost, job_cost, scrape_fails, row_elapsed_sec, job_elapsed_sec);
         }).ToList();
 
         try
@@ -318,7 +325,9 @@ public record grading_progress_event(
     string about,
     string contact,
     string email,
-    string phone
+    string phone,
+    double row_elapsed_sec = 0,
+    double job_elapsed_sec = 0
 );
 
 public class grading_job_status

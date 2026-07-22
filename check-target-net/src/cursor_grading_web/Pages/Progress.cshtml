@@ -25,6 +25,9 @@
                 <span class="ms-3"><strong>Scrape failures:</strong>
                     <span id="scrape_fail_total" class="fs-5 ms-1">0</span>
                 </span>
+                <span class="ms-3"><strong>Elapsed:</strong>
+                    <span id="job_elapsed" class="fs-5 ms-1">0.0s</span>
+                </span>
             </div>
 
             <div class="alert alert-light border py-2 mb-3" role="status"
@@ -48,6 +51,7 @@
                     Grading complete!
                     <span class="ms-2">Final spend: <strong id="spend_final">$0.000000</strong></span>
                     <span class="ms-2">Scrape failures: <strong id="scrape_fail_final">0</strong></span>
+                    <span class="ms-2">Elapsed: <strong id="job_elapsed_final">0.0s</strong></span>
                     <a id="download_link" href="#" class="btn btn-success ms-3">Download Results</a>
                 </div>
             </div>
@@ -95,6 +99,7 @@
                             <th>#</th>
                             <th>Grade</th>
                             <th>Cost</th>
+                            <th>Time</th>
                             <th id="reason_sort_header" role="button" tabindex="0" style="cursor: pointer; user-select: none;"
                                 title="Click to sort by reason">
                                 Reason <span id="reason_sort_indicator">↕</span>
@@ -122,7 +127,8 @@
                     <span id="detail_grade_badge" class="badge bg-secondary">—</span>
                     <span class="text-muted ms-2 small">Excel row <span id="detail_excel_row">—</span>
                         · log #<span id="detail_seq">—</span>
-                        · cost <span id="detail_cost">—</span></span>
+                        · cost <span id="detail_cost">—</span>
+                        · time <span id="detail_elapsed">—</span></span>
                 </div>
 
                 <h6 class="text-uppercase text-muted small mb-1">What happened</h6>
@@ -167,5 +173,5 @@
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/deepseek_balance.js?v=provider1"></script>
-    <script src="~/js/grading.js?v=detail1"></script>
+    <script src="~/js/grading.js?v=detail-elapsed1"></script>
 }

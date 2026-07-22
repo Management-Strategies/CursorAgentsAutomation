@@ -5,6 +5,7 @@
     var logEntries = [];
     var lastJobCost = 0;
     var lastScrapeFails = 0;
+    var lastJobElapsed = 0;
     // "all" | "unable" | "scrape_non403"
     var logFilter = "all";
     // null = arrival (newest first), "asc", "desc"
@@ -15,6 +16,27 @@
         var n = Number(amount);
         if (!isFinite(n)) n = 0;
         return "$" + n.toFixed(6);
+    }
+
+    function formatElapsed(seconds) {
+        var s = Number(seconds);
+        if (!isFinite(s) || s < 0) s = 0;
+        if (s < 60) return s.toFixed(1) + "s";
+        var mins = Math.floor(s / 60);
+        var secs = Math.round(s - mins * 60);
+        if (secs === 60) {
+            mins += 1;
+            secs = 0;
+        }
+        return mins + "m " + String(secs).padStart(2, "0") + "s";
+    }
+
+    function updateJobElapsed(jobElapsedSec) {
+        lastJobElapsed = Number(jobElapsedSec) || 0;
+        var el = document.getElementById("job_elapsed");
+        if (el) el.textContent = formatElapsed(lastJobElapsed);
+        var finalEl = document.getElementById("job_elapsed_final");
+        if (finalEl) finalEl.textContent = formatElapsed(lastJobElapsed);
     }
 
     function escapeHtml(text) {
@@ -320,6 +342,7 @@
         setText("detail_excel_row", entry.excelRow > 0 ? String(entry.excelRow) : "—");
         setText("detail_seq", String(entry.seq));
         setText("detail_cost", formatUsd(entry.cost));
+        setText("detail_elapsed", formatElapsed(entry.elapsed));
         setText("detail_summary", explained.summary);
         setText("detail_explanation", explained.explanation);
         setText("detail_reason", entry.reason || "—");
@@ -398,6 +421,7 @@
                 "<td>" + e.seq + "</td>" +
                 '<td><span class="badge ' + getGradeBadgeClass(e.grade) + '">' + escapeHtml(e.grade) + "</span></td>" +
                 "<td>" + formatUsd(e.cost) + "</td>" +
+                "<td>" + formatElapsed(e.elapsed) + "</td>" +
                 "<td>" + escapeHtml(e.reason) +
                 (clickable ? ' <span class="text-muted small">Details</span>' : "") +
                 "</td>" +
@@ -416,6 +440,7 @@
             grade: grade || "",
             reason: reason || "",
             cost: rowCost,
+            elapsed: meta.elapsed,
             excelRow: Number(meta.excelRow) || 0,
             company: meta.company || "",
             website: meta.website || "",
@@ -444,7 +469,7 @@
 
     function updateProgress(payload) {
         // Support both object payload (current) and legacy positional args if ever replayed.
-        var completed, total, grade, reason, rowCost, jobCost, scrapeFails, meta;
+        var completed, total, grade, reason, rowCost, jobCost, scrapeFails, rowElapsed, jobElapsed, meta;
         if (payload && typeof payload === "object" && !Array.isArray(payload) && "completed" in payload) {
             completed = payload.completed;
             total = payload.total;
@@ -453,6 +478,8 @@
             rowCost = payload.row_cost;
             jobCost = payload.job_cost;
             scrapeFails = payload.scrape_fails;
+            rowElapsed = payload.row_elapsed_sec;
+            jobElapsed = payload.job_elapsed_sec;
             meta = {
                 excelRow: payload.excel_row,
                 company: payload.company,
@@ -461,7 +488,8 @@
                 about: payload.about,
                 contact: payload.contact,
                 email: payload.email,
-                phone: payload.phone
+                phone: payload.phone,
+                elapsed: rowElapsed
             };
         } else {
             completed = arguments[0];
@@ -471,7 +499,9 @@
             rowCost = arguments[4];
             jobCost = arguments[5];
             scrapeFails = arguments[6];
-            meta = {};
+            rowElapsed = arguments[7];
+            jobElapsed = arguments[8];
+            meta = { elapsed: rowElapsed };
         }
 
         var bar = document.getElementById("progress_bar");
@@ -491,6 +521,7 @@
 
         updateSpend(jobCost);
         updateScrapeFails(scrapeFails);
+        updateJobElapsed(jobElapsed);
         appendLog(grade, reason, rowCost, meta);
         if (window.deepseekBalance && document.querySelector("[data-deepseek-balance]"))
             window.deepseekBalance.refresh(false);
@@ -536,6 +567,7 @@
 
         updateSpend(lastJobCost);
         updateScrapeFails(lastScrapeFails);
+        updateJobElapsed(lastJobElapsed);
         if (window.deepseekBalance && document.querySelector("[data-deepseek-balance]"))
             window.deepseekBalance.refresh(true);
 

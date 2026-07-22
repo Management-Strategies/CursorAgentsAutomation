@@ -10,7 +10,7 @@ public class web_scraper_service
 {
     private readonly HttpClient _http_client;
     private const int max_text_length = 8000;
-    private const int timeout_seconds = 15;
+    private const int timeout_seconds = 45;
 
     public web_scraper_service(HttpClient http_client)
     {
