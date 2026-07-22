@@ -2,7 +2,8 @@
 __pycache__/
 *.py[oc]
 build/
-dist/
+# Root-level Python package output only (do not ignore wwwroot/lib/**/dist/)
+/dist/
 wheels/
 *.egg-info
 
