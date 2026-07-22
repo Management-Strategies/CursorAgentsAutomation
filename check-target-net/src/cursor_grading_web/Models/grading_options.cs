@@ -22,7 +22,7 @@ public class column_options
 
     public string website { get; set; } = "Website Link";
     public string products { get; set; } = "Company primary products";
-    public string about { get; set; } = "about Company who they are selling";
+    public string about { get; set; } = "about Company";
     public string grade_out { get; set; } = "WEBSITE_GRADE";
     public string comment_out { get; set; } = "Comment";
 }

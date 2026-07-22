@@ -8,7 +8,7 @@ headers = {c.value: c.column for c in ws[1] if c.value}
 print("COLUMNS:", list(headers.keys()))
 
 col_website = headers.get("Website Link")
-col_about = headers.get("about Company who they are selling")
+col_about = headers.get("about Company")
 
 for row in ws.iter_rows(min_row=2, max_row=8):
     website = row[col_website - 1].value if col_website else "?"

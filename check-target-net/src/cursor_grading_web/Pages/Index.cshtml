@@ -8,6 +8,27 @@
     <h1 class="mb-4">Company Website Grading</h1>
     <p class="lead">Upload an Excel spreadsheet of companies to grade their websites as potential B2B leads.</p>
 
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Grade companies</h2>
+                    <p class="card-text text-muted mb-3">Upload a workbook that already matches the grading columns and start a job.</p>
+                    <a class="btn btn-primary btn-sm" href="#grading_form">Start grading below</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Standardize spreadsheet</h2>
+                    <p class="card-text text-muted mb-3">Remap any .xlsx to a selectable base-format column layout before grading.</p>
+                    <a class="btn btn-outline-primary btn-sm" asp-page="/Standardize">Open Standardize</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="alert alert-light border mb-4" role="status" id="llm_status_box"
          data-llm-provider="@Model.llm_provider"
          data-llm-supports-balance="@(Model.llm_supports_balance ? "true" : "false")">
@@ -87,7 +108,7 @@
                     <label for="input_file" class="form-label">Input Excel File (.xlsx)</label>
                     <input type="file" class="form-control" id="input_file" name="input_file" accept=".xlsx"
                            @(Model.has_last_file ? "" : "required")>
-                    <div class="form-text">Must contain columns: Website Link, Company primary products, about Company who they are selling, WEBSITE_GRADE</div>
+                    <div class="form-text">Must contain columns: Website Link, Company primary products, about Company, WEBSITE_GRADE</div>
                 </div>
 
                 <div class="mb-3">

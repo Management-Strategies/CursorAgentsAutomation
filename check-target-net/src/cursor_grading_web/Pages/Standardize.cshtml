@@ -1,0 +1,162 @@
+@page
+@model cursor_grading_web.Pages.standardize_model
+@{
+    ViewData["Title"] = "Standardize Spreadsheet";
+}
+
+<div class="container">
+    <h1 class="mb-3">Standardize Spreadsheet</h1>
+    <p class="lead">
+        Remap an uploaded workbook to match a selectable <strong>base-format</strong> column layout.
+        Place base templates in <code>wwwroot/base-formats/</code>. Outputs go to <code>wwwroot/standardized/</code>.
+    </p>
+
+    @if (Model.message != null)
+    {
+        <div class="alert @(Model.is_error ? "alert-danger" : "alert-success")">
+            @Model.message
+            @if (!string.IsNullOrEmpty(Model.download_url))
+            {
+                <div class="mt-2">
+                    <a class="btn btn-sm btn-outline-success" href="@Model.download_url" download>Download @Model.output_saved_name</a>
+                </div>
+            }
+        </div>
+    }
+
+    @if (!Model.show_mapping)
+    {
+        <div class="card mb-4">
+            <div class="card-header">1. Choose base format and source file</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" asp-page-handler="Prepare">
+                    <div class="standardize-fields">
+                        <label asp-for="base_format_name" class="form-label mb-0">Base format (.xlsx)</label>
+                        <select asp-for="base_format_name" class="form-select" asp-items="Model.base_format_options">
+                            @if (Model.base_format_options.Count == 0)
+                            {
+                                <option value="">(no files in base-formats)</option>
+                            }
+                        </select>
+                        <div class="form-text mt-0">
+                            Drop additional templates into <code>wwwroot/base-formats/</code> — they appear in this list.
+                            Row 1 headers define the standard columns.
+                        </div>
+
+                        <label asp-for="input_file" class="form-label mb-0">Source spreadsheet (.xlsx)</label>
+                        <input type="file" class="form-control" asp-for="input_file" accept=".xlsx" required>
+                        <div class="form-text mt-0">Upload the workbook to remap.</div>
+
+                        <label asp-for="sheet_name" class="form-label mb-0">Source sheet name (optional)</label>
+                        <input type="text" class="form-control" asp-for="sheet_name" placeholder="Leave blank for first sheet">
+                        <div class="form-text mt-0">Leave blank to use the first sheet.</div>
+
+                        <label asp-for="output_name" class="form-label mb-0">Output filename</label>
+                        <input type="text" class="form-control" asp-for="output_name">
+                        <div class="form-text mt-0">Saved under <code>wwwroot/standardized/</code></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-3">Prepare column mapping</button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-header">2. Map source columns → base-format columns</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Convert">
+                    <input type="hidden" asp-for="base_format_name" />
+                    <input type="hidden" asp-for="sheet_name" />
+                    <input type="hidden" asp-for="output_name" />
+                    <input type="hidden" asp-for="temp_source_path" />
+
+                    @for (var i = 0; i < Model.target_headers.Count; i++)
+                    {
+                        <input type="hidden" name="target_headers[@i]" value="@Model.target_headers[i]" />
+                    }
+                    @for (var i = 0; i < Model.source_headers.Count; i++)
+                    {
+                        <input type="hidden" name="source_headers[@i]" value="@Model.source_headers[i]" />
+                    }
+
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle" id="mapping_table">
+                            <thead>
+                                <tr>
+                                    <th style="width:45%">Base-format column</th>
+                                    <th>Source column</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < Model.target_headers.Count; i++)
+                                {
+                                    var selected = i < Model.mapped_source.Count ? Model.mapped_source[i] : "";
+                                    <tr class="mapping-row" tabindex="0">
+                                        <td class="mapping-target">
+                                            <code>@Model.target_headers[i]</code>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm mapping-source" name="mapped_source[@i]">
+                                                <option value="">(leave blank)</option>
+                                                @foreach (var src in Model.source_headers)
+                                                {
+                                                    if (string.Equals(src, selected, StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <option value="@src" selected>@src</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@src">@src</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">Convert and save</button>
+                        <a class="btn btn-outline-secondary" asp-page="/Standardize">Start over</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    <p class="text-muted small mb-0">
+        Tip: after saving, use the download link or open the file from <code>standardized/</code>,
+        then grade it from <a asp-page="/Index">Home</a> if the base format matches the grading columns.
+    </p>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const table = document.getElementById("mapping_table");
+            if (!table) return;
+
+            function setActiveRow(row) {
+                if (!row || !row.classList.contains("mapping-row")) return;
+                table.querySelectorAll(".mapping-row.is-active").forEach(function (r) {
+                    r.classList.remove("is-active");
+                });
+                row.classList.add("is-active");
+            }
+
+            table.addEventListener("click", function (e) {
+                const row = e.target.closest(".mapping-row");
+                setActiveRow(row);
+            });
+
+            table.addEventListener("focusin", function (e) {
+                const row = e.target.closest(".mapping-row");
+                setActiveRow(row);
+            });
+        })();
+    </script>
+}

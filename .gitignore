@@ -12,3 +12,8 @@ wheels/
 
 # Local data (keep on disk, do not track)
 companies_graded.xlsx
+
+# Standardize tool: keep folders, ignore generated outputs / temp uploads
+check-target-net/src/cursor_grading_web/wwwroot/standardized/**
+!check-target-net/src/cursor_grading_web/wwwroot/standardized/.gitkeep
+check-target-net/src/cursor_grading_web/wwwroot/standardized/_temp/

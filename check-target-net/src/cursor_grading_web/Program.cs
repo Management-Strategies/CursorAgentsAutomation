@@ -18,7 +18,7 @@ var gemini_config = builder.Configuration.GetSection(gemini_options.section_name
 
 var configured_providers = new List<active_llm_settings>();
 
-var deepseek_key = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY") ?? deep_seek_config.api_key;
+var deepseek_key = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
 if (!string.IsNullOrWhiteSpace(deepseek_key))
 {
     configured_providers.Add(new active_llm_settings
@@ -43,7 +43,7 @@ if (!string.IsNullOrWhiteSpace(deepseek_key))
     });
 }
 
-var gemini_key = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? gemini_config.api_key;
+var gemini_key = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
 if (!string.IsNullOrWhiteSpace(gemini_key))
 {
     configured_providers.Add(new active_llm_settings
@@ -71,8 +71,8 @@ if (!string.IsNullOrWhiteSpace(gemini_key))
 if (configured_providers.Count == 0)
 {
     throw new InvalidOperationException(
-        "No LLM provider is configured. Set DEEPSEEK_API_KEY and/or GEMINI_API_KEY " +
-        "(or the matching api_key fields in appsettings.json).");
+        "No LLM provider is configured. Set the System environment variables " +
+        "DEEPSEEK_API_KEY and/or GEMINI_API_KEY. Do not put API keys in appsettings.json.");
 }
 
 var default_provider = llm_provider_catalog.Normalize(llm_config.provider ?? "deepseek");
@@ -99,6 +99,7 @@ builder.Services.AddHttpClient<web_scraper_service>(client =>
 
 // ---- App Services ----
 builder.Services.AddSingleton<excel_service>();
+builder.Services.AddSingleton<spreadsheet_standardize_service>();
 builder.Services.AddSingleton<prompt_builder>();
 builder.Services.AddSingleton<grade_parser>();
 builder.Services.AddSingleton<last_form_state_store>();

@@ -54,7 +54,7 @@ public class excel_service_tests : IDisposable
         {
             website = "NonExistent Column",
             products = "Company primary products",
-            about = "about Company who they are selling",
+            about = "about Company",
             grade_out = "WEBSITE_GRADE"
         };
 
