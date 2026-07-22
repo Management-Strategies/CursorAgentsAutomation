@@ -6,6 +6,9 @@ obj/
 *.userosscache
 *.sln.docstates
 
+## Visual Studio
+.vs/
+
 ## VS Code / Cursor
 .vscode/
 .idea/
