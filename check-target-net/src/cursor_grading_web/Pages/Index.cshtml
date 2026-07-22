@@ -1,0 +1,191 @@
+﻿@page
+@model cursor_grading_web.Pages.index_model
+@{
+    ViewData["Title"] = "Company Website Grading";
+}
+
+<div class="container">
+    <h1 class="mb-4">Company Website Grading</h1>
+    <p class="lead">Upload an Excel spreadsheet of companies to grade their websites as potential B2B leads.</p>
+
+    <div class="alert alert-light border mb-4" role="status" id="llm_status_box"
+         data-llm-provider="@Model.llm_provider"
+         data-llm-supports-balance="@(Model.llm_supports_balance ? "true" : "false")">
+        <div class="mb-1"><strong>Selected LLM:</strong> <span id="llm_status_name">@Model.llm_display_name</span>
+            <span class="text-muted">(<span id="llm_status_model">@Model.llm_model</span>)</span></div>
+        <div id="llm_balance_block" class="@(Model.llm_supports_balance ? "" : "d-none")">
+            <strong><span id="llm_balance_label">@Model.llm_display_name</span> remaining balance:</strong>
+            <span data-deepseek-balance class="fs-5 ms-1">…</span>
+            <div class="small text-muted mt-1" data-deepseek-balance-detail></div>
+        </div>
+        <div id="llm_balance_na" class="text-muted @(Model.llm_supports_balance ? "d-none" : "")">
+            Account balance: n/a (<span id="llm_balance_na_name">@Model.llm_display_name</span>)
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Start New Grading Job</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="grading_form">
+                <div class="mb-3">
+                    <label class="form-label">LLM Provider</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="llm_provider" id="llm_deepseek"
+                                   value="deepseek" @(Model.llm_provider == "deepseek" ? "checked" : "")
+                                   @(Model.deepseek_available ? "" : "disabled")
+                                   data-display-name="DeepSeek"
+                                   data-model="@(Model.deepseek_model ?? "")"
+                                   data-supports-balance="true">
+                            <label class="form-check-label" for="llm_deepseek">
+                                DeepSeek
+                                @if (!string.IsNullOrEmpty(Model.deepseek_model))
+                                {
+                                    <span class="text-muted">(@Model.deepseek_model)</span>
+                                }
+                                @if (!Model.deepseek_available)
+                                {
+                                    <span class="text-danger">(API key not configured)</span>
+                                }
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="llm_provider" id="llm_gemini"
+                                   value="gemini" @(Model.llm_provider == "gemini" ? "checked" : "")
+                                   @(Model.gemini_available ? "" : "disabled")
+                                   data-display-name="Gemini"
+                                   data-model="@(Model.gemini_model ?? "")"
+                                   data-supports-balance="false">
+                            <label class="form-check-label" for="llm_gemini">
+                                Gemini
+                                @if (!string.IsNullOrEmpty(Model.gemini_model))
+                                {
+                                    <span class="text-muted">(@Model.gemini_model)</span>
+                                }
+                                @if (!Model.gemini_available)
+                                {
+                                    <span class="text-danger">(API key not configured)</span>
+                                }
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.has_last_file)
+                {
+                    <div class="alert alert-secondary py-2 mb-3" id="last_file_box">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="use_last_file" name="use_last_file" value="true" checked>
+                            <label class="form-check-label" for="use_last_file">
+                                Use last chosen file: <strong>@Model.last_file_display_name</strong>
+                            </label>
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-3" id="file_picker_group">
+                    <label for="input_file" class="form-label">Input Excel File (.xlsx)</label>
+                    <input type="file" class="form-control" id="input_file" name="input_file" accept=".xlsx"
+                           @(Model.has_last_file ? "" : "required")>
+                    <div class="form-text">Must contain columns: Website Link, Company primary products, about Company who they are selling, WEBSITE_GRADE</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="output_name" class="form-label">Output Filename</label>
+                    <input type="text" class="form-control" id="output_name" name="output_name" value="@Model.output_name">
+                    <div class="form-text">The graded file will be saved in the uploads folder with this name</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="sheet_name" class="form-label">Sheet Name (optional)</label>
+                    <input type="text" class="form-control" id="sheet_name" name="sheet_name" value="@Model.sheet_name" placeholder="Leave blank for active sheet">
+                </div>
+
+                <div class="mb-3">
+                    <label for="max_workers" class="form-label">Max Workers (concurrent gradings)</label>
+                    <input type="number" class="form-control" id="max_workers" name="max_workers" value="@Model.max_workers" min="1" max="100">
+                    <div class="form-text">Workers are fed in one at a time with a delay (appsettings <code>ramp_batch_size</code> / <code>ramp_interval_ms</code>) so each can start before the next.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Start Grading</button>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.message != null)
+    {
+        <div class="alert @(Model.is_error ? "alert-danger" : "alert-info")">
+            @Model.message
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/deepseek_balance.js?v=provider1"></script>
+    <script>
+        (function () {
+            var useLast = document.getElementById("use_last_file");
+            var fileInput = document.getElementById("input_file");
+            var pickerGroup = document.getElementById("file_picker_group");
+
+            function syncFile() {
+                if (!useLast || !fileInput) return;
+                var reuse = useLast.checked;
+                if (pickerGroup) pickerGroup.style.display = reuse ? "none" : "";
+                if (reuse) {
+                    fileInput.removeAttribute("required");
+                    fileInput.value = "";
+                } else {
+                    fileInput.setAttribute("required", "required");
+                }
+            }
+
+            function syncProvider() {
+                var selected = document.querySelector('input[name="llm_provider"]:checked');
+                if (!selected) return;
+
+                var name = selected.getAttribute("data-display-name") || selected.value;
+                var model = selected.getAttribute("data-model") || "";
+                var supportsBalance = selected.getAttribute("data-supports-balance") === "true";
+                var provider = selected.value;
+
+                var statusBox = document.getElementById("llm_status_box");
+                if (statusBox) {
+                    statusBox.setAttribute("data-llm-provider", provider);
+                    statusBox.setAttribute("data-llm-supports-balance", supportsBalance ? "true" : "false");
+                }
+
+                var nameEl = document.getElementById("llm_status_name");
+                var modelEl = document.getElementById("llm_status_model");
+                if (nameEl) nameEl.textContent = name;
+                if (modelEl) modelEl.textContent = model;
+
+                var balBlock = document.getElementById("llm_balance_block");
+                var balNa = document.getElementById("llm_balance_na");
+                var balLabel = document.getElementById("llm_balance_label");
+                var balNaName = document.getElementById("llm_balance_na_name");
+                if (balLabel) balLabel.textContent = name;
+                if (balNaName) balNaName.textContent = name;
+
+                if (supportsBalance) {
+                    if (balBlock) balBlock.classList.remove("d-none");
+                    if (balNa) balNa.classList.add("d-none");
+                    if (window.deepseekBalance) window.deepseekBalance.refresh(true, provider);
+                } else {
+                    if (balBlock) balBlock.classList.add("d-none");
+                    if (balNa) balNa.classList.remove("d-none");
+                }
+            }
+
+            if (useLast) {
+                useLast.addEventListener("change", syncFile);
+                syncFile();
+            }
+
+            document.querySelectorAll('input[name="llm_provider"]').forEach(function (el) {
+                el.addEventListener("change", syncProvider);
+            });
+            syncProvider();
+        })();
+    </script>
+}

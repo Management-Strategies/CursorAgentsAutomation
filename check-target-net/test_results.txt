@@ -1,0 +1,60 @@
+Build started 7/16/2026 13:39:23.
+Test run for c:\_NETGIT-THREE\check-target-net\tests\cursor_grading_web_tests\bin\Debug\net8.0\cursor_grading_web_tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.3.1+6b60a9e56a (64-bit .NET 8.0.28)
+[xUnit.net 00:00:00.18]   Discovering: cursor_grading_web_tests
+[xUnit.net 00:00:00.22]   Discovered:  cursor_grading_web_tests
+[xUnit.net 00:00:00.22]   Starting:    cursor_grading_web_tests
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_contains_json_shape_instruction [24 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_empty_string_defaults_to_unable [27 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_contains_who_we_are_section [< 1 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_with_empty_examples_does_not_include_example_section [< 1 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_contains_grading_instructions [< 1 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_contains_website_and_products [< 1 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_with_examples_includes_them [< 1 ms]
+  Passed cursor_grading_web_tests.prompt_builder_tests.build_with_null_examples_does_not_include_example_section [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_json_with_markdown_fences_strips_them [7 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_invalid_json_maybe_falls_back_to_regex [2 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_completely_invalid_input_defaults_to_unable [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_invalid_json_unable_falls_back_to_regex [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_valid_json_unable_returns_grade [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_valid_json_maybe_returns_grade [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_reason_truncated_at_200_chars [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_invalid_json_falls_back_to_regex [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_valid_json_good_returns_grade [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_json_grade_case_insensitive [< 1 ms]
+  Passed cursor_grading_web_tests.grade_parser_tests.parse_json_missing_reason_adds_default [< 1 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_missing_content_field_returns_empty [103 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_unable_response_returns_content [2 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_maybe_response_returns_content [< 1 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_successful_response_returns_content [< 1 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_http_error_throws [3 ms]
+  Passed cursor_grading_web_tests.deep_seek_service_tests.grade_async_empty_response_returns_empty_string [2 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_successful_response_returns_text [213 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_adds_https_when_missing_scheme [2 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_server_error_returns_failure [1 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_cancellation_requested_returns_failure [2 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_empty_body_returns_failure [< 1 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_http_error_returns_failure [< 1 ms]
+  Passed cursor_grading_web_tests.web_scraper_service_tests.scrape_async_timeout_returns_failure [60 ms]
+  Passed cursor_grading_web_tests.excel_service_tests.load_workbook_file_exists_returns_pending_rows [897 ms]
+[xUnit.net 00:00:01.75]   Finished:    cursor_grading_web_tests
+  Passed cursor_grading_web_tests.excel_service_tests.load_workbook_skips_already_graded_rows [82 ms]
+  Passed cursor_grading_web_tests.excel_service_tests.load_workbook_invalid_file_throws [1 ms]
+  Passed cursor_grading_web_tests.excel_service_tests.load_workbook_missing_columns_throws [63 ms]
+  Passed cursor_grading_web_tests.excel_service_tests.get_pending_count_returns_count_of_ungraded_rows [76 ms]
+  Passed cursor_grading_web_tests.excel_service_tests.write_grade_persists_to_file [358 ms]
+
+Test Run Successful.
+Total tests: 38
+     Passed: 38
+ Total time: 2.2178 Seconds
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.93

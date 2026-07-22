@@ -1,0 +1,116 @@
+@page
+@model cursor_grading_web.Pages.progress_model
+@{
+    ViewData["Title"] = "Grading Progress";
+}
+
+<div class="container">
+    <h1 class="mb-4">Grading Progress</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">Status</div>
+        <div class="card-body">
+            <div id="status_badge" class="badge bg-secondary mb-2">Waiting for updates...</div>
+
+            <div class="progress mb-3" style="height: 30px;">
+                <div id="progress_bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    0 / 0
+                </div>
+            </div>
+
+            <div class="alert alert-info py-2 mb-2" role="status">
+                <strong>Spend so far:</strong>
+                <span id="spend_total" class="fs-5 ms-1">$0.000000</span>
+                <span class="ms-3"><strong>Scrape failures:</strong>
+                    <span id="scrape_fail_total" class="fs-5 ms-1">0</span>
+                </span>
+            </div>
+
+            <div class="alert alert-light border py-2 mb-3" role="status"
+                 data-llm-provider="@Model.llm_provider"
+                 data-llm-supports-balance="@(Model.llm_supports_balance ? "true" : "false")">
+                <div class="mb-1"><strong>LLM:</strong> @Model.llm_display_name <span class="text-muted">(@Model.llm_model)</span></div>
+                @if (Model.llm_supports_balance)
+                {
+                    <strong>@Model.llm_display_name remaining balance:</strong>
+                    <span data-deepseek-balance class="fs-5 ms-1">…</span>
+                    <div class="small text-muted mt-1" data-deepseek-balance-detail></div>
+                }
+                else
+                {
+                    <span class="text-muted">Account balance: n/a (@Model.llm_display_name)</span>
+                }
+            </div>
+
+            <div id="complete_message" class="d-none">
+                <div class="alert alert-success">
+                    Grading complete!
+                    <span class="ms-2">Final spend: <strong id="spend_final">$0.000000</strong></span>
+                    <span class="ms-2">Scrape failures: <strong id="scrape_fail_final">0</strong></span>
+                    <a id="download_link" href="#" class="btn btn-success ms-3">Download Results</a>
+                </div>
+            </div>
+
+            <div id="error_message" class="alert alert-danger d-none"></div>
+
+            <div class="mt-2">
+                <button id="cancel_btn" class="btn btn-warning btn-sm">Cancel Job</button>
+                <a href="/" class="btn btn-outline-secondary btn-sm">Back to Upload</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-2" id="grade_summary_line" role="status">
+        <strong>Summary:</strong>
+        <span class="badge bg-success ms-2">GOOD <span id="summary_good">0</span></span>
+        <span class="badge bg-warning text-dark ms-1">MAYBE <span id="summary_maybe">0</span></span>
+        <span class="badge bg-danger ms-1">UNABLE <span id="summary_unable">0</span></span>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span>Results Log</span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span id="log_showing_count" class="small text-muted">Showing 0 of 0</span>
+                <button type="button" id="filter_all_btn" class="btn btn-secondary btn-sm">
+                    Show all
+                </button>
+                <button type="button" id="filter_good_btn" class="btn btn-outline-success btn-sm">
+                    Show GOOD
+                </button>
+                <button type="button" id="filter_unable_btn" class="btn btn-outline-danger btn-sm">
+                    Show UNABLE only
+                </button>
+                <button type="button" id="filter_scrape_non403_btn" class="btn btn-outline-warning btn-sm">
+                    Scrape failed (not 403)
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div id="log_container" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-striped table-sm mb-0" id="log_table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Grade</th>
+                            <th>Cost</th>
+                            <th id="reason_sort_header" role="button" tabindex="0" style="cursor: pointer; user-select: none;"
+                                title="Click to sort by reason">
+                                Reason <span id="reason_sort_indicator">↕</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="log_body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/deepseek_balance.js?v=provider1"></script>
+    <script src="~/js/grading.js?v=shutdown1"></script>
+}
