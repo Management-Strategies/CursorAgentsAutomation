@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\_NETGIT-THREE\\CursorAgentsAutomation\\check-target-net\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{2D5F1447-2411-4137-A00A-ED80127565AC}|src\\cursor_grading_web\\cursor_grading_web.csproj|c:\\_netgit-three\\cursoragentsautomation\\check-target-net\\src\\cursor_grading_web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{2D5F1447-2411-4137-A00A-ED80127565AC}|src\\cursor_grading_web\\cursor_grading_web.csproj|solutionrelative:src\\cursor_grading_web\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{2D5F1447-2411-4137-A00A-ED80127565AC}|src\\cursor_grading_web\\cursor_grading_web.csproj|c:\\_netgit-three\\cursoragentsautomation\\check-target-net\\src\\cursor_grading_web\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{2D5F1447-2411-4137-A00A-ED80127565AC}|src\\cursor_grading_web\\cursor_grading_web.csproj|solutionrelative:src\\cursor_grading_web\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -14,7 +18,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 8,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -33,40 +37,45 @@
               "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{e506b91c-c606-466a-90a9-123d1d1e12b3}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\_NETGIT-THREE\\CursorAgentsAutomation\\check-target-net\\src\\cursor_grading_web\\appsettings.json",
+              "RelativeDocumentMoniker": "src\\cursor_grading_web\\appsettings.json",
+              "ToolTip": "C:\\_NETGIT-THREE\\CursorAgentsAutomation\\check-target-net\\src\\cursor_grading_web\\appsettings.json",
+              "RelativeToolTip": "src\\cursor_grading_web\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-07-22T15:20:02.577Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\_NETGIT-THREE\\CursorAgentsAutomation\\check-target-net\\src\\cursor_grading_web\\Program.cs",
               "RelativeDocumentMoniker": "src\\cursor_grading_web\\Program.cs",
               "ToolTip": "C:\\_NETGIT-THREE\\CursorAgentsAutomation\\check-target-net\\src\\cursor_grading_web\\Program.cs",
               "RelativeToolTip": "src\\cursor_grading_web\\Program.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-21T20:45:18.452Z",
+              "WhenOpened": "2026-07-22T15:19:38.875Z",
               "EditorCaption": ""
             }
           ]
         },
         {
-          "DockedWidth": 200,
+          "DockedWidth": 1508,
           "SelectedChildIndex": -1,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{131369f2-062d-44a2-8671-91ff31efb4f4}"
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{be4d7042-ba3f-11d2-840e-00c04f9902c1}"
@@ -81,37 +90,15 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{ecb7191a-597b-41f5-9843-03a4cf275dde}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{a0c5197d-0ac7-4b63-97cd-8872a789d233}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{0ad07096-bba9-4900-a651-0598d26f6d24}"
-            }
-          ]
-        },
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": -1,
-          "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{131369f2-062d-44a2-8671-91ff31efb4f4}"
-            },
-            {
-              "$type": "Bookmark",
               "Name": "ST:0:0:{896e815d-3862-4978-a1bc-cb6a3e70045c}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+              "Name": "ST:0:0:{0ad07096-bba9-4900-a651-0598d26f6d24}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
             }
           ]
         }
