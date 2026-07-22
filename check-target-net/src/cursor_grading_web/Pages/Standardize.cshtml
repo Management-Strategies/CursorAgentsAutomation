@@ -29,7 +29,7 @@
         <div class="card mb-4">
             <div class="card-header">1. Choose base format and source file</div>
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data" asp-page-handler="Prepare">
+                <form method="post" enctype="multipart/form-data" asp-page-handler="Prepare" id="prepare_form">
                     <div class="standardize-fields">
                         <label asp-for="base_format_name" class="form-label mb-0">Base format (.xlsx)</label>
                         <select asp-for="base_format_name" class="form-select" asp-items="Model.base_format_options">
@@ -44,7 +44,27 @@
                         </div>
 
                         <label asp-for="input_file" class="form-label mb-0">Source spreadsheet (.xlsx)</label>
-                        <input type="file" class="form-control" asp-for="input_file" accept=".xlsx" required>
+                        <div>
+                            @if (Model.has_last_file)
+                            {
+                                <div class="alert alert-secondary py-2 mb-2" id="last_file_box">
+                                    <div class="form-check mb-0">
+                                        @if (Model.use_last_file)
+                                        {
+                                            <input class="form-check-input" type="checkbox" id="use_last_file" name="use_last_file" value="true" checked>
+                                        }
+                                        else
+                                        {
+                                            <input class="form-check-input" type="checkbox" id="use_last_file" name="use_last_file" value="true">
+                                        }
+                                        <label class="form-check-label" for="use_last_file">
+                                            Use last chosen file: <strong>@Model.last_file_display_name</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                            <input type="file" class="form-control" asp-for="input_file" accept=".xlsx" id="input_file">
+                        </div>
                         <div class="form-text mt-0">Upload the workbook to remap.</div>
 
                         <label asp-for="sheet_name" class="form-label mb-0">Source sheet name (optional)</label>
@@ -56,7 +76,10 @@
                         <div class="form-text mt-0">Saved under <code>wwwroot/standardized/</code></div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary mt-3">Prepare column mapping</button>
+                    <div class="d-flex align-items-center gap-3 mt-3">
+                        <button type="submit" class="btn btn-primary" id="prepare_btn">Prepare column mapping</button>
+                        <span id="thinking_indicator" class="thinking-blink d-none" aria-live="polite">thinking…</span>
+                    </div>
                 </form>
             </div>
         </div>
@@ -138,25 +161,57 @@
     <script>
         (function () {
             const table = document.getElementById("mapping_table");
-            if (!table) return;
+            if (table) {
+                function setActiveRow(row) {
+                    if (!row || !row.classList.contains("mapping-row")) return;
+                    table.querySelectorAll(".mapping-row.is-active").forEach(function (r) {
+                        r.classList.remove("is-active");
+                    });
+                    row.classList.add("is-active");
+                }
 
-            function setActiveRow(row) {
-                if (!row || !row.classList.contains("mapping-row")) return;
-                table.querySelectorAll(".mapping-row.is-active").forEach(function (r) {
-                    r.classList.remove("is-active");
+                table.addEventListener("click", function (e) {
+                    const row = e.target.closest(".mapping-row");
+                    setActiveRow(row);
                 });
-                row.classList.add("is-active");
+
+                table.addEventListener("focusin", function (e) {
+                    const row = e.target.closest(".mapping-row");
+                    setActiveRow(row);
+                });
             }
 
-            table.addEventListener("click", function (e) {
-                const row = e.target.closest(".mapping-row");
-                setActiveRow(row);
-            });
+            const prepareForm = document.getElementById("prepare_form");
+            const thinking = document.getElementById("thinking_indicator");
+            const prepareBtn = document.getElementById("prepare_btn");
+            if (prepareForm && thinking && prepareBtn) {
+                prepareForm.addEventListener("submit", function () {
+                    thinking.classList.remove("d-none");
+                    prepareBtn.disabled = true;
+                });
+            }
 
-            table.addEventListener("focusin", function (e) {
-                const row = e.target.closest(".mapping-row");
-                setActiveRow(row);
-            });
+            const useLast = document.getElementById("use_last_file");
+            const fileInput = document.getElementById("input_file");
+            if (fileInput) {
+                function syncFileRequired() {
+                    if (useLast && useLast.checked) {
+                        fileInput.removeAttribute("required");
+                    } else {
+                        fileInput.setAttribute("required", "required");
+                    }
+                }
+                if (useLast) {
+                    useLast.addEventListener("change", syncFileRequired);
+                    fileInput.addEventListener("change", function () {
+                        if (fileInput.files && fileInput.files.length > 0) {
+                            useLast.checked = false;
+                            syncFileRequired();
+                        }
+                    });
+                }
+                syncFileRequired();
+            }
         })();
     </script>
 }

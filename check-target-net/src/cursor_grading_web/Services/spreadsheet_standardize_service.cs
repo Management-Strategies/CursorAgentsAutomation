@@ -56,6 +56,54 @@ public class spreadsheet_standardize_service
     }
 
     /// <summary>
+    /// Reads up to <paramref name="max_rows"/> data rows (after the header) as dictionaries keyed by header.
+    /// </summary>
+    public IReadOnlyList<Dictionary<string, string>> read_sample_rows(
+        string file_path,
+        string? sheet_name = null,
+        int max_rows = 10)
+    {
+        if (max_rows < 1)
+            return Array.Empty<Dictionary<string, string>>();
+
+        using var wb = new XLWorkbook(file_path);
+        var ws = resolve_sheet(wb, sheet_name);
+        var headers = read_header_row(ws);
+        if (headers.Count == 0)
+            return Array.Empty<Dictionary<string, string>>();
+
+        var header_map = build_header_map(ws);
+        var samples = new List<Dictionary<string, string>>();
+
+        foreach (var row in ws.RowsUsed().Skip(1))
+        {
+            if (samples.Count >= max_rows)
+                break;
+
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var any = false;
+            foreach (var header in headers)
+            {
+                if (!header_map.TryGetValue(header, out var col))
+                {
+                    dict[header] = "";
+                    continue;
+                }
+
+                var text = CellDisplayText(row.Cell(col));
+                dict[header] = text;
+                if (!string.IsNullOrWhiteSpace(text))
+                    any = true;
+            }
+
+            if (any)
+                samples.Add(dict);
+        }
+
+        return samples;
+    }
+
+    /// <summary>
     /// Writes a workbook whose columns match <paramref name="target_headers"/> (order preserved),
     /// copying cell values from mapped source columns. Empty mapping leaves the target column blank.
     /// </summary>
@@ -217,6 +265,23 @@ public class spreadsheet_standardize_service
                 map[val] = cell.WorksheetColumn().ColumnNumber();
         }
         return map;
+    }
+
+    private static string CellDisplayText(IXLCell cell)
+    {
+        if (cell.TryGetValue(out string? s))
+            return (s ?? "").Trim();
+
+        if (cell.TryGetValue(out double d))
+            return d.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        if (cell.TryGetValue(out DateTime dt))
+            return dt.ToString("o", System.Globalization.CultureInfo.InvariantCulture);
+
+        if (cell.TryGetValue(out bool b))
+            return b ? "true" : "false";
+
+        return cell.GetFormattedString().Trim();
     }
 
     private static void CopyCellValue(IXLCell source, IXLCell dest)

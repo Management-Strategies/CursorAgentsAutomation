@@ -103,6 +103,7 @@ builder.Services.AddSingleton<spreadsheet_standardize_service>();
 builder.Services.AddSingleton<prompt_builder>();
 builder.Services.AddSingleton<grade_parser>();
 builder.Services.AddSingleton<last_form_state_store>();
+builder.Services.AddSingleton<last_standardize_form_state_store>();
 builder.Services.AddSingleton<grading_background_service>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<grading_background_service>());
 

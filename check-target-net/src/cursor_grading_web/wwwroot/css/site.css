@@ -104,3 +104,14 @@ body {
 #mapping_table .mapping-row.is-active .mapping-target code {
     font-weight: 700;
 }
+
+@keyframes thinking-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+.thinking-blink {
+    color: #6c757d;
+    font-style: italic;
+    animation: thinking-blink 1.8s ease-in-out infinite;
+}
