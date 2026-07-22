@@ -19,9 +19,15 @@
                 </div>
             </div>
 
+            <div class="alert alert-info py-2 mb-3" role="status">
+                <strong>Spend so far:</strong>
+                <span id="spend_total" class="fs-5 ms-1">$0.000000</span>
+            </div>
+
             <div id="complete_message" class="d-none">
                 <div class="alert alert-success">
                     Grading complete!
+                    <span class="ms-2">Final spend: <strong id="spend_final">$0.000000</strong></span>
                     <a id="download_link" href="#" class="btn btn-success ms-3">Download Results</a>
                 </div>
             </div>
@@ -44,6 +50,7 @@
                         <tr>
                             <th>#</th>
                             <th>Grade</th>
+                            <th>Cost</th>
                             <th>Reason</th>
                         </tr>
                     </thead>
@@ -57,5 +64,5 @@
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-    <script src="~/js/grading.js"></script>
+    <script src="~/js/grading.js?v=spend1"></script>
 }

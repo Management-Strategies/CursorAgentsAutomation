@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -19,7 +18,7 @@ public class deep_seek_service
         _logger = logger;
     }
 
-    public async Task<string> grade_async(string prompt, CancellationToken ct)
+    public async Task<llm_grade_response> grade_async(string prompt, CancellationToken ct)
     {
         var request_body = new
         {
@@ -55,17 +54,50 @@ public class deep_seek_service
         using var doc = JsonDocument.Parse(response_body);
 
         var root = doc.RootElement;
+        var (cache_hit, cache_miss, completion) = parse_usage(root);
+        var cost = _options.compute_cost(cache_hit, cache_miss, completion);
+
         if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
         {
             var choice = choices[0];
             if (choice.TryGetProperty("message", out var message) &&
                 message.TryGetProperty("content", out var msg_content))
             {
-                return msg_content.GetString() ?? "";
+                return new llm_grade_response(
+                    msg_content.GetString() ?? "",
+                    cache_hit,
+                    cache_miss,
+                    completion,
+                    cost);
             }
         }
 
         _logger.LogWarning("DeepSeek response missing expected structure: {Response}", response_body);
-        return "";
+        return new llm_grade_response("", cache_hit, cache_miss, completion, cost);
+    }
+
+    private static (int cache_hit, int cache_miss, int completion) parse_usage(JsonElement root)
+    {
+        if (!root.TryGetProperty("usage", out var usage))
+            return (0, 0, 0);
+
+        var cache_hit = usage.TryGetProperty("prompt_cache_hit_tokens", out var hit_el)
+            ? hit_el.GetInt32()
+            : 0;
+        var cache_miss = usage.TryGetProperty("prompt_cache_miss_tokens", out var miss_el)
+            ? miss_el.GetInt32()
+            : 0;
+        var completion = usage.TryGetProperty("completion_tokens", out var completion_el)
+            ? completion_el.GetInt32()
+            : 0;
+
+        // Fallback when cache breakdown is absent: treat all prompt tokens as miss
+        if (cache_hit == 0 && cache_miss == 0 &&
+            usage.TryGetProperty("prompt_tokens", out var prompt_el))
+        {
+            cache_miss = prompt_el.GetInt32();
+        }
+
+        return (cache_hit, cache_miss, completion);
     }
 }

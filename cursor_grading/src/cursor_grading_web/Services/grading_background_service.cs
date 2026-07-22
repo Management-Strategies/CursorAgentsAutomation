@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Threading.Channels;
 using cursor_grading_web.Hubs;
 using cursor_grading_web.Models;
@@ -99,20 +98,14 @@ public class grading_background_service : BackgroundService
             return;
         }
 
-        // Convert grade_result examples to company_row for prompt builder
-        // We don't have the full company_row for examples (only have row_index),
-        // so let's re-read to get example company data properly
-        var example_rows = new List<company_row>();
-        // For simplicity, examples are passed as company_row via the Excel reload
-        // We'll rebuild examples from the workbook if needed; for now skip example passing
-        // (the prompt_builder already handles null examples)
-
         _logger.LogInformation("Starting grading: {Count} companies, {Workers} workers",
             pending.Count, options.max_workers);
 
         var semaphore = new SemaphoreSlim(options.max_workers);
         var completed_count = 0;
         var total = pending.Count;
+        // Micro-dollars (1e-6 USD) for thread-safe Interlocked accumulation
+        long total_cost_micros = 0;
 
         // Use a lock for thread-safe Excel writes (ClosedXML is not thread-safe)
         var file_lock = new object();
@@ -144,19 +137,27 @@ public class grading_background_service : BackgroundService
                 }
 
                 Interlocked.Increment(ref completed_count);
+                var row_micros = (long)Math.Round(result.cost_usd * 1_000_000m, MidpointRounding.AwayFromZero);
+                var job_micros = Interlocked.Add(ref total_cost_micros, row_micros);
+                var row_cost = result.cost_usd;
+                var job_cost = job_micros / 1_000_000m;
 
-                // Push progress via SignalR
+                // Push progress via SignalR (including spend after every company)
                 await _hub_context.Clients.All.SendAsync("grading_progress",
                     completed_count, total,
                     result.grade, result.reason,
+                    (double)row_cost, (double)job_cost,
                     cancellationToken: ct);
 
-                _logger.LogInformation("[{Done}/{Total}] Row {Row} -> {Grade}: {Reason}",
-                    completed_count, total, result.row_index, result.grade, result.reason);
+                _logger.LogInformation(
+                    "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6})",
+                    completed_count, total, result.row_index, result.grade, result.reason,
+                    row_cost, job_cost);
             }
         }
 
-        _logger.LogInformation("Grading complete. {Count} rows processed", completed_count);
+        _logger.LogInformation("Grading complete. {Count} rows processed, total spend ${Cost:F6}",
+            completed_count, total_cost_micros / 1_000_000m);
     }
 
     private async Task<grade_result> grade_one_row(
@@ -179,14 +180,31 @@ public class grading_background_service : BackgroundService
         // Step 2: Build prompt and call DeepSeek with retries
         var prompt = builder.build(row.website, row.products, row.about, scrape.text_content);
 
+        int total_hit = 0;
+        int total_miss = 0;
+        int total_completion = 0;
+        decimal total_cost = 0m;
+
         string? last_error = null;
         for (int attempt = 0; attempt <= options.max_retries; attempt++)
         {
             try
             {
                 var llm_response = await deep_seek.grade_async(prompt, ct);
-                var result = parser.parse(llm_response);
-                return result with { row_index = row.row_index };
+                total_hit += llm_response.cache_hit_tokens;
+                total_miss += llm_response.cache_miss_tokens;
+                total_completion += llm_response.completion_tokens;
+                total_cost += llm_response.cost_usd;
+
+                var result = parser.parse(llm_response.content);
+                return result with
+                {
+                    row_index = row.row_index,
+                    cache_hit_tokens = total_hit,
+                    cache_miss_tokens = total_miss,
+                    completion_tokens = total_completion,
+                    cost_usd = total_cost
+                };
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -200,8 +218,14 @@ public class grading_background_service : BackgroundService
             }
         }
 
-        return new grade_result(row.row_index, "UNABLE",
-            $"Failed after {options.max_retries + 1} attempt(s): {last_error}");
+        return new grade_result(
+            row.row_index,
+            "UNABLE",
+            $"Failed after {options.max_retries + 1} attempt(s): {last_error}",
+            total_hit,
+            total_miss,
+            total_completion,
+            total_cost);
     }
 }
 

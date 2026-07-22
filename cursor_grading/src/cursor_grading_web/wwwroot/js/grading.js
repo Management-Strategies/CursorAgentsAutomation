@@ -3,6 +3,13 @@
 (function () {
     var connection = null;
     var logCount = 0;
+    var lastJobCost = 0;
+
+    function formatUsd(amount) {
+        var n = Number(amount);
+        if (!isFinite(n)) n = 0;
+        return "$" + n.toFixed(6);
+    }
 
     function getGradeBadgeClass(grade) {
         switch (grade) {
@@ -13,7 +20,15 @@
         }
     }
 
-    function appendLog(grade, reason) {
+    function updateSpend(jobCost) {
+        lastJobCost = Number(jobCost) || 0;
+        var spendEl = document.getElementById("spend_total");
+        if (spendEl) spendEl.textContent = formatUsd(lastJobCost);
+        var finalEl = document.getElementById("spend_final");
+        if (finalEl) finalEl.textContent = formatUsd(lastJobCost);
+    }
+
+    function appendLog(grade, reason, rowCost) {
         logCount++;
         var tbody = document.getElementById("log_body");
         if (!tbody) return;
@@ -22,6 +37,7 @@
         tr.innerHTML =
             '<td>' + logCount + '</td>' +
             '<td><span class="badge ' + getGradeBadgeClass(grade) + '">' + grade + '</span></td>' +
+            '<td>' + formatUsd(rowCost) + '</td>' +
             '<td>' + (reason || "") + '</td>';
         tbody.insertBefore(tr, tbody.firstChild);
 
@@ -30,7 +46,7 @@
         if (container) container.scrollTop = 0;
     }
 
-    function updateProgress(completed, total, grade, reason) {
+    function updateProgress(completed, total, grade, reason, rowCost, jobCost) {
         var bar = document.getElementById("progress_bar");
         var badge = document.getElementById("status_badge");
 
@@ -46,7 +62,8 @@
             badge.className = "badge bg-primary mb-2";
         }
 
-        appendLog(grade, reason);
+        updateSpend(jobCost);
+        appendLog(grade, reason, rowCost);
     }
 
     function onComplete(outputPath) {
@@ -64,6 +81,8 @@
             bar.classList.remove("progress-bar-animated");
             bar.classList.remove("progress-bar-striped");
         }
+
+        updateSpend(lastJobCost);
 
         if (completeDiv) {
             completeDiv.classList.remove("d-none");

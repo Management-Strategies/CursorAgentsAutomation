@@ -28,4 +28,16 @@ public class deep_seek_options
     public string api_key { get; set; } = "";
     public string model { get; set; } = "deepseek-v4-pro";
     public string base_url { get; set; } = "https://api.deepseek.com";
+
+    // USD per 1M tokens (deepseek-v4-pro defaults from DeepSeek pricing)
+    public decimal input_cache_hit_per_million { get; set; } = 0.003625m;
+    public decimal input_cache_miss_per_million { get; set; } = 0.435m;
+    public decimal output_per_million { get; set; } = 0.87m;
+
+    public decimal compute_cost(int cache_hit_tokens, int cache_miss_tokens, int completion_tokens)
+    {
+        return cache_hit_tokens / 1_000_000m * input_cache_hit_per_million
+             + cache_miss_tokens / 1_000_000m * input_cache_miss_per_million
+             + completion_tokens / 1_000_000m * output_per_million;
+    }
 }
