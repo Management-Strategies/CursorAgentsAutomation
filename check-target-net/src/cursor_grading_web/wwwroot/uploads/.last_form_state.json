@@ -4,5 +4,5 @@
   "output_name": "companies_graded.xlsx",
   "sheet_name": null,
   "max_workers": 40,
-  "llm_provider": "deepseek"
+  "llm_provider": "gemini"
 }
