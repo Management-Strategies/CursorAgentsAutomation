@@ -1,8 +1,8 @@
 {
   "original_file_name": "companies.xlsx",
-  "saved_input_file_name": "upload_20260721_173306_companies.xlsx",
+  "saved_input_file_name": "upload_20260723_124107_companies.xlsx",
   "output_name": "companies_graded.xlsx",
   "sheet_name": null,
   "max_workers": 40,
-  "llm_provider": "gemini"
+  "llm_provider": "deepseek"
 }

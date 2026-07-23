@@ -1,8 +1,8 @@
 using System.Net;
+using System.Security.Authentication;
 using System.Text;
 using Moq;
 using Moq.Protected;
-using cursor_grading_web.Models;
 using cursor_grading_web.Services;
 
 namespace cursor_grading_web_tests;
@@ -142,5 +142,49 @@ public class web_scraper_service_tests
 
         Assert.False(result.success);
         Assert.Contains("empty", result.error_reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void is_ssl_or_channel_failure_detects_secure_channel_errors()
+    {
+        var ex = new HttpRequestException(
+            "An error occurred while sending the request.",
+            new System.IO.IOException(
+                "The SSL connection could not be established, see inner exception.",
+                new AuthenticationException("Authentication failed")));
+
+        Assert.True(web_scraper_service.is_ssl_or_channel_failure(ex));
+        Assert.True(web_scraper_service.is_schannel_handshake_failure(ex));
+        Assert.False(web_scraper_service.is_certificate_name_mismatch(ex));
+        Assert.False(web_scraper_service.is_ssl_or_channel_failure(
+            new HttpRequestException("Connection refused")));
+    }
+
+    [Fact]
+    public void is_certificate_name_mismatch_detects_hostname_errors()
+    {
+        var ex = new HttpRequestException(
+            "An error occurred while sending the request.",
+            new AuthenticationException(
+                "The remote certificate is invalid according to the validation procedure: RemoteCertificateNameMismatch"));
+
+        Assert.True(web_scraper_service.is_certificate_name_mismatch(ex));
+        Assert.True(web_scraper_service.is_ssl_or_channel_failure(ex));
+        Assert.False(web_scraper_service.is_schannel_handshake_failure(ex));
+    }
+
+    [Theory]
+    [InlineData("https://veoneer.com/", "https://www.veoneer.com/")]
+    [InlineData("https://www.veoneer.com/path", "https://veoneer.com/path")]
+    [InlineData("https://example.com:8443/a", "https://www.example.com:8443/a")]
+    public void try_alternate_www_url_toggles_www(string input, string expected)
+    {
+        Assert.Equal(expected, web_scraper_service.try_alternate_www_url(input));
+    }
+
+    [Fact]
+    public void try_alternate_www_url_returns_null_for_localhost()
+    {
+        Assert.Null(web_scraper_service.try_alternate_www_url("https://localhost/"));
     }
 }

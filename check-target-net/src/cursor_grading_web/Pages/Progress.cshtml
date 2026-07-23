@@ -25,6 +25,9 @@
                 <span class="ms-3"><strong>Scrape failures:</strong>
                     <span id="scrape_fail_total" class="fs-5 ms-1">0</span>
                 </span>
+                <span class="ms-3"><strong>Executing:</strong>
+                    <span id="executing_total" class="fs-5 ms-1">0</span>
+                </span>
                 <span class="ms-3"><strong>Elapsed:</strong>
                     <span id="job_elapsed" class="fs-5 ms-1">0.0s</span>
                 </span>
@@ -86,7 +89,7 @@
                 <button type="button" id="filter_unable_btn" class="btn btn-outline-danger btn-sm">
                     Show UNABLE only
                 </button>
-                <button type="button" id="filter_scrape_non403_btn" class="btn btn-outline-warning btn-sm">
+                <button type="button" id="filter_scrape_non403_btn" class="btn btn-warning btn-sm fw-bold text-dark">
                     Scrape failed (not 403)
                 </button>
             </div>
@@ -97,6 +100,7 @@
                     <thead>
                         <tr>
                             <th>#</th>
+                            <th title="Row number in the spreadsheet (1 = header)">Sheet row</th>
                             <th>Grade</th>
                             <th>Cost</th>
                             <th>Time</th>
@@ -173,5 +177,5 @@
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/deepseek_balance.js?v=provider1"></script>
-    <script src="~/js/grading.js?v=detail-elapsed1"></script>
+    <script src="~/js/grading.js?v=sheet-row1"></script>
 }

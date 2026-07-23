@@ -66,6 +66,31 @@ public class excel_service_tests : IDisposable
     }
 
     [Fact]
+    public void load_workbook_accepts_legacy_about_header()
+    {
+        File.Copy(_input_file, _output_file, overwrite: true);
+
+        // Simulate older files that still use the long about header.
+        using (var wb = new ClosedXML.Excel.XLWorkbook(_output_file))
+        {
+            var ws = wb.Worksheet(1);
+            foreach (var cell in ws.Row(1).CellsUsed())
+            {
+                if (string.Equals(cell.GetString().Trim(), "about Company", StringComparison.OrdinalIgnoreCase))
+                {
+                    cell.Value = "about Company who they are selling";
+                    break;
+                }
+            }
+            wb.Save();
+        }
+
+        var columns = new column_options { about = "about Company" };
+        var (pending, _) = _service.load_workbook(_output_file, null, columns, 5);
+        Assert.True(pending.Count > 0);
+    }
+
+    [Fact]
     public void load_workbook_skips_already_graded_rows()
     {
         File.Copy(_input_file, _output_file, overwrite: true);

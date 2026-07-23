@@ -89,12 +89,20 @@ builder.Services.AddHttpClient<web_scraper_service>(client =>
     client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
     client.Timeout = TimeSpan.FromSeconds(60);
     client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+    client.DefaultRequestVersion = System.Net.HttpVersion.Version11;
+    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {
     AllowAutoRedirect = true,
     AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-    MaxAutomaticRedirections = 5
+    MaxAutomaticRedirections = 5,
+    SslOptions = new System.Net.Security.SslClientAuthenticationOptions
+    {
+        EnabledSslProtocols =
+            System.Security.Authentication.SslProtocols.Tls12 |
+            System.Security.Authentication.SslProtocols.Tls13
+    }
 });
 
 // ---- App Services ----

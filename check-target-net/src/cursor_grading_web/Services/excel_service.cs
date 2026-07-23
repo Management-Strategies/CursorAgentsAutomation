@@ -35,7 +35,11 @@ public class excel_service
         int col_phone = first_header(header_map, "Phone", "Contact Phone", "Telephone", "Mobile");
         int col_website = header_map.GetValueOrDefault(columns.website, -1);
         int col_products = header_map.GetValueOrDefault(columns.products, -1);
-        int col_about = header_map.GetValueOrDefault(columns.about, -1);
+        // Prefer configured about header; accept legacy long name used by older workbooks.
+        int col_about = first_header(
+            header_map,
+            columns.about,
+            "about Company who they are selling");
         int col_grade = header_map.GetValueOrDefault(columns.grade_out, -1);
         int col_comment = header_map.GetValueOrDefault(columns.comment_out, -1);
 
@@ -46,7 +50,9 @@ public class excel_service
             if (col_products == -1) missing.Add(columns.products);
             if (col_about == -1) missing.Add(columns.about);
             if (col_grade == -1) missing.Add(columns.grade_out);
-            throw new InvalidOperationException($"Missing expected columns: {string.Join(", ", missing)}");
+            var found = string.Join(", ", header_map.Keys);
+            throw new InvalidOperationException(
+                $"Missing expected columns: {string.Join(", ", missing)}. Found headers: {found}");
         }
 
         foreach (var row in ws.RowsUsed().Skip(1))

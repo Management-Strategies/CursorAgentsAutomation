@@ -123,6 +123,7 @@ public class grading_background_service : BackgroundService
         using var ramp_cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var completed_count = 0;
         var scrape_fail_count = 0;
+        var executing_count = 0;
         var total = pending.Count;
         // Micro-dollars (1e-6 USD) for thread-safe Interlocked accumulation
         long total_cost_micros = 0;
@@ -143,6 +144,12 @@ public class grading_background_service : BackgroundService
         var tasks = pending.Select(async row =>
         {
             await semaphore.WaitAsync(ct);
+            var executing = Interlocked.Increment(ref executing_count);
+            await _hub_context.Clients.All.SendAsync(
+                "grading_executing",
+                executing,
+                CancellationToken.None);
+
             var row_sw = System.Diagnostics.Stopwatch.StartNew();
             grade_result result;
             try
@@ -153,6 +160,12 @@ public class grading_background_service : BackgroundService
             {
                 try { semaphore.Release(); }
                 catch (ObjectDisposedException) { /* job ending */ }
+
+                var still_executing = Interlocked.Decrement(ref executing_count);
+                await _hub_context.Clients.All.SendAsync(
+                    "grading_executing",
+                    Math.Max(0, still_executing),
+                    CancellationToken.None);
             }
 
             lock (file_lock)
@@ -172,6 +185,7 @@ public class grading_background_service : BackgroundService
             var job_cost = job_micros / 1_000_000m;
             var row_elapsed_sec = row_sw.Elapsed.TotalSeconds;
             var job_elapsed_sec = job_sw.Elapsed.TotalSeconds;
+            var executing_now = Math.Max(0, Volatile.Read(ref executing_count));
 
             // Progress after the grade is recorded in the workbook (do not cancel mid-notify after write)
             await _hub_context.Clients.All.SendAsync(
@@ -193,13 +207,14 @@ public class grading_background_service : BackgroundService
                     row.email,
                     row.phone,
                     row_elapsed_sec,
-                    job_elapsed_sec),
+                    job_elapsed_sec,
+                    executing_now),
                 CancellationToken.None);
 
             _logger.LogInformation(
-                "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6}, scrape_fails {ScrapeFails}, row {RowElapsed:F1}s, job {JobElapsed:F1}s)",
+                "[{Done}/{Total}] Row {Row} -> {Grade}: {Reason} (row ${RowCost:F6}, total ${JobCost:F6}, scrape_fails {ScrapeFails}, executing {Executing}, row {RowElapsed:F1}s, job {JobElapsed:F1}s)",
                 done, total, result.row_index, result.grade, result.reason,
-                row_cost, job_cost, scrape_fails, row_elapsed_sec, job_elapsed_sec);
+                row_cost, job_cost, scrape_fails, executing_now, row_elapsed_sec, job_elapsed_sec);
         }).ToList();
 
         try
@@ -327,7 +342,8 @@ public record grading_progress_event(
     string email,
     string phone,
     double row_elapsed_sec = 0,
-    double job_elapsed_sec = 0
+    double job_elapsed_sec = 0,
+    int executing = 0
 );
 
 public class grading_job_status

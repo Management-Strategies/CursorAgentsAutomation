@@ -222,6 +222,12 @@
         if (finalEl) finalEl.textContent = String(lastScrapeFails);
     }
 
+    function updateExecuting(count) {
+        var n = Math.max(0, Number(count) || 0);
+        var el = document.getElementById("executing_total");
+        if (el) el.textContent = String(n);
+    }
+
     function updateShowingCount(shown, total) {
         var el = document.getElementById("log_showing_count");
         if (el) el.textContent = "Showing " + shown + " of " + total;
@@ -287,7 +293,12 @@
             document.getElementById("filter_scrape_non403_btn"),
             logFilter === "scrape_non403",
             "btn-warning",
-            "btn-outline-warning");
+            "btn-warning");
+        var scrapeBtn = document.getElementById("filter_scrape_non403_btn");
+        if (scrapeBtn) {
+            scrapeBtn.classList.remove("text-white");
+            scrapeBtn.classList.add("fw-bold", "text-dark");
+        }
     }
 
     function getVisibleEntries() {
@@ -419,6 +430,7 @@
             html +=
                 "<tr" + rowClass + attrs + ">" +
                 "<td>" + e.seq + "</td>" +
+                "<td>" + (e.excelRow > 0 ? e.excelRow : "—") + "</td>" +
                 '<td><span class="badge ' + getGradeBadgeClass(e.grade) + '">' + escapeHtml(e.grade) + "</span></td>" +
                 "<td>" + formatUsd(e.cost) + "</td>" +
                 "<td>" + formatElapsed(e.elapsed) + "</td>" +
@@ -480,6 +492,7 @@
             scrapeFails = payload.scrape_fails;
             rowElapsed = payload.row_elapsed_sec;
             jobElapsed = payload.job_elapsed_sec;
+            if ("executing" in payload) updateExecuting(payload.executing);
             meta = {
                 excelRow: payload.excel_row,
                 company: payload.company,
@@ -539,6 +552,7 @@
 
         try {
             connection.off("grading_progress");
+            connection.off("grading_executing");
             connection.off("job_complete");
             connection.off("job_error");
             connection.off("job_cancelled");
@@ -554,6 +568,8 @@
         var completeDiv = document.getElementById("complete_message");
         var downloadLink = document.getElementById("download_link");
         var bar = document.getElementById("progress_bar");
+
+        updateExecuting(0);
 
         if (badge) {
             badge.textContent = "Complete";
@@ -587,6 +603,8 @@
         var badge = document.getElementById("status_badge");
         var errorDiv = document.getElementById("error_message");
 
+        updateExecuting(0);
+
         if (badge) {
             badge.textContent = "Error";
             badge.className = "badge bg-danger mb-2";
@@ -602,6 +620,7 @@
 
     function onCancelled() {
         var badge = document.getElementById("status_badge");
+        updateExecuting(0);
         if (badge) {
             badge.textContent = "Cancelled";
             badge.className = "badge bg-warning text-dark mb-2";
@@ -623,6 +642,7 @@
             .build();
 
         connection.on("grading_progress", updateProgress);
+        connection.on("grading_executing", updateExecuting);
         connection.on("job_complete", onComplete);
         connection.on("job_error", onError);
         connection.on("job_cancelled", onCancelled);

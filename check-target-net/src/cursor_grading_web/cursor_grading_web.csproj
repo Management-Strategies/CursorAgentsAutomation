@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="AngleSharp" Version="1.1.2" />
   </ItemGroup>

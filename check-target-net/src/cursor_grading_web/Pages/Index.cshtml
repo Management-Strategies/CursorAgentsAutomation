@@ -48,10 +48,10 @@
         <div class="card-header">Start New Grading Job</div>
         <div class="card-body">
             <form method="post" enctype="multipart/form-data" id="grading_form">
-                <div class="mb-3">
-                    <label class="form-label">LLM Provider</label>
-                    <div class="d-flex flex-wrap gap-3">
-                        <div class="form-check">
+                <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                    <label class="form-label mb-0">LLM Provider</label>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <div class="form-check mb-0">
                             <input class="form-check-input" type="radio" name="llm_provider" id="llm_deepseek"
                                    value="deepseek" @(Model.llm_provider == "deepseek" ? "checked" : "")
                                    @(Model.deepseek_available ? "" : "disabled")
@@ -70,7 +70,7 @@
                                 }
                             </label>
                         </div>
-                        <div class="form-check">
+                        <div class="form-check mb-0">
                             <input class="form-check-input" type="radio" name="llm_provider" id="llm_gemini"
                                    value="gemini" @(Model.llm_provider == "gemini" ? "checked" : "")
                                    @(Model.gemini_available ? "" : "disabled")
@@ -104,31 +104,25 @@
                     </div>
                 }
 
-                <div class="mb-3" id="file_picker_group">
-                    <label for="input_file" class="form-label">Input Excel File (.xlsx)</label>
-                    <input type="file" class="form-control" id="input_file" name="input_file" accept=".xlsx"
-                           @(Model.has_last_file ? "" : "required")>
-                    <div class="form-text">Must contain columns: Website Link, Company primary products, about Company, WEBSITE_GRADE</div>
-                </div>
+                <div class="grading-fields">
+                    <label for="input_file" class="form-label mb-0 grading-file-part">Input Excel File (.xlsx)</label>
+                    <input type="file" class="form-control grading-file-part" id="input_file" name="input_file" accept=".xlsx">
+                    <div class="form-text mt-0 grading-file-part">Must contain columns: Website Link, Company primary products, about Company, WEBSITE_GRADE</div>
 
-                <div class="mb-3">
-                    <label for="output_name" class="form-label">Output Filename</label>
+                    <label for="output_name" class="form-label mb-0">Output Filename</label>
                     <input type="text" class="form-control" id="output_name" name="output_name" value="@Model.output_name">
-                    <div class="form-text">The graded file will be saved in the uploads folder with this name</div>
-                </div>
+                    <div class="form-text mt-0">Saved in the uploads folder with this name</div>
 
-                <div class="mb-3">
-                    <label for="sheet_name" class="form-label">Sheet Name (optional)</label>
+                    <label for="sheet_name" class="form-label mb-0">Sheet Name (optional)</label>
                     <input type="text" class="form-control" id="sheet_name" name="sheet_name" value="@Model.sheet_name" placeholder="Leave blank for active sheet">
-                </div>
+                    <div class="form-text mt-0">Leave blank for the active sheet.</div>
 
-                <div class="mb-3">
-                    <label for="max_workers" class="form-label">Max Workers (concurrent gradings)</label>
+                    <label for="max_workers" class="form-label mb-0">Max Workers (concurrent gradings)</label>
                     <input type="number" class="form-control" id="max_workers" name="max_workers" value="@Model.max_workers" min="1" max="100">
-                    <div class="form-text">Workers are fed in one at a time with a delay (appsettings <code>ramp_batch_size</code> / <code>ramp_interval_ms</code>) so each can start before the next.</div>
+                    <div class="form-text mt-0">Workers ramp in one at a time (<code>ramp_batch_size</code> / <code>ramp_interval_ms</code>).</div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Start Grading</button>
+                <button type="submit" class="btn btn-primary mt-3">Start Grading</button>
             </form>
         </div>
     </div>
@@ -147,12 +141,14 @@
         (function () {
             var useLast = document.getElementById("use_last_file");
             var fileInput = document.getElementById("input_file");
-            var pickerGroup = document.getElementById("file_picker_group");
+            var fileParts = document.querySelectorAll(".grading-file-part");
 
             function syncFile() {
-                if (!useLast || !fileInput) return;
-                var reuse = useLast.checked;
-                if (pickerGroup) pickerGroup.style.display = reuse ? "none" : "";
+                if (!fileInput) return;
+                var reuse = useLast && useLast.checked;
+                fileParts.forEach(function (el) {
+                    el.style.display = reuse ? "none" : "";
+                });
                 if (reuse) {
                     fileInput.removeAttribute("required");
                     fileInput.value = "";
@@ -200,8 +196,8 @@
 
             if (useLast) {
                 useLast.addEventListener("change", syncFile);
-                syncFile();
             }
+            syncFile();
 
             document.querySelectorAll('input[name="llm_provider"]').forEach(function (el) {
                 el.addEventListener("change", syncProvider);
